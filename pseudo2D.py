@@ -23,13 +23,14 @@ uu = np.cos(2*np.pi*1.0*grid.yy/pm.Lx) + 0.1*np.sin(2*np.pi*2.0*grid.yy/pm.Lx)
 vv = np.cos(2*np.pi*1.0*grid.xx/pm.Lx) + 0.2*np.cos(3*np.pi*2.0*grid.yy/pm.Lx)
 fu = mod.forward(uu)
 fv = mod.forward(vv)
+fu, fv = mod.inc_proj(fu, fv, grid)
 
 # Forcing
 kf = 4
-fx = np.sin(2*np.pi*kf*grid.xx/pm.Lx)
+fx = np.sin(2*np.pi*kf*grid.yy/pm.Lx)
 fx = mod.forward(fx)
-fx = np.zeros((pm.Nx, pm.Nx), dtype=complex)
 fy = np.zeros((pm.Nx, pm.Nx), dtype=complex)
+fx, fy = mod.inc_proj(fx, fy, grid)
 
 for step in range(1, pm.Nt):
 
@@ -46,7 +47,7 @@ for step in range(1, pm.Nt):
         mod.check(fu, fv, fx, fy, grid, pm, step)
 
     # Time integration
-    for oo in range(pm.ord, 0, -1):
+    for oo in range(pm.rkord, 0, -1):
         # Non-linear term
         uu = mod.inverse(fu)
         vv = mod.inverse(fv)
@@ -59,16 +60,17 @@ for step in range(1, pm.Nt):
 
         gx = mod.forward(uu*ux + vv*uy)
         gy = mod.forward(uu*vx + vv*vy)
+        gx, gy = mod.inc_proj(gx, gy, grid)
 
         # Equations
         fu = fup + (grid.dt/oo) * (
-            - (grid.pxx * gx + grid.pxy * gy)
+            - gx
             - pm.nu * grid.k2 * fu 
             + fx
             )
 
         fv = fvp + (grid.dt/oo) * (
-            - (grid.pxy * gx + grid.pyy * gy)
+            - gy
             - pm.nu * grid.k2 * fv 
             + fy
             )
