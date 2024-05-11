@@ -96,3 +96,83 @@ def save_fields(fu, fv, step):
     uu = inverse(fu)
     vv = inverse(fv)
     np.savez(f'output/fields_{step:06}.npz', uu=uu,vv=vv,fu=fu,fv=fv)
+
+def flatten_fields(uu, vv):
+    return np.concatenate((uu.flatten(), vv.flatten()))
+
+def unflatten_fields(X, pm):
+    ll = len(X)//2
+    uu = X[:ll].reshape((pm.Nx, pm.Ny))
+    vv = X[ll:].reshape((pm.Nx, pm.Ny))
+    return uu, vv
+
+def evolution_function(grid, pm):
+    # Forcing
+    kf = 4
+    fx = np.sin(2*np.pi*kf*grid.yy/pm.Lx)
+    fx = forward(fx)
+    fy = np.zeros((pm.Nx, pm.Nx), dtype=complex)
+    fx, fy = inc_proj(fx, fy, grid)
+
+    def evolve(X, T):
+        uu, vv = unflatten_fields(X, pm)
+        fu = forward(uu)
+        fv = forward(vv)
+        for step in range(1, int(T/pm.dt)):
+
+            # Store previous time step
+            fup = np.copy(fu)
+            fvp = np.copy(fv)
+
+            # Time integration
+            for oo in range(pm.rkord, 0, -1):
+                # Non-linear term
+                uu = inverse(fu)
+                vv = inverse(fv)
+                
+                ux = inverse(deriv(fu, grid.kx))
+                uy = inverse(deriv(fu, grid.ky))
+
+                vx = inverse(deriv(fv, grid.kx))
+                vy = inverse(deriv(fv, grid.ky))
+
+                gx = forward(uu*ux + vv*uy)
+                gy = forward(uu*vx + vv*vy)
+                gx, gy = inc_proj(gx, gy, grid)
+
+                # Equations
+                fu = fup + (grid.dt/oo) * (
+                    - gx
+                    - pm.nu * grid.k2 * fu 
+                    + fx
+                    )
+
+                fv = fvp + (grid.dt/oo) * (
+                    - gy
+                    - pm.nu * grid.k2 * fv 
+                    + fy
+                    )
+
+                # de-aliasing
+                fu[grid.zero_mode] = 0.0 
+                fv[grid.zero_mode] = 0.0 
+                fu[grid.dealias_modes] = 0.0 
+                fv[grid.dealias_modes] = 0.0
+
+        uu = inverse(fu)
+        vv = inverse(fv)
+        X  = flatten_fields(uu, vv)
+        return X
+    return evolve
+
+def application_function(evolve, grid, pm):
+    def apply_A(X, Y, T, dX, dT):
+        epsilon = 1e-7
+        deriv_x0 = evolve(X+dX, T) - Y
+        deriv_x0 = deriv_x0/epsilon
+
+        rhs = evolve(X, pm.dt) - X
+        rhs = rhs/pm.dt
+
+        return np.concatenate([deriv_x0-dX, rhs*dT])
+    return apply_A
