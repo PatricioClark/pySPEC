@@ -103,8 +103,7 @@ np.save(f'{path}R/R_uv.npy', R_uv)
 np.save(f'{path}R/R_u.npy', R_u)
 np.save(f'{path}R/R_v.npy', R_v)
 
-# #%%
-#Para hacer plots de R en mi compu:
+# Para hacer plots de R en mi compu:
 # import numpy as np
 # import matplotlib.pyplot as plt
 

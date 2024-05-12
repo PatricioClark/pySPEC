@@ -19,7 +19,6 @@ import mod2D as mod
 # Initialize solver
 grid = mod.Grid(pm)
 evolve  = mod.evolution_function(grid, pm)
-apply_A = mod.application_function(evolve, grid, pm)
 
 # Initial conditions
 uu = np.cos(2*np.pi*1.0*grid.yy/pm.Lx) + 0.1*np.sin(2*np.pi*2.0*grid.yy/pm.Lx)

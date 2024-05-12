@@ -165,14 +165,33 @@ def evolution_function(grid, pm):
         return X
     return evolve
 
-def application_function(evolve, grid, pm):
-    def apply_A(X, Y, T, dX, dT):
-        epsilon = 1e-7
-        deriv_x0 = evolve(X+dX, T) - Y
+def inc_proj_X_function(grid, pm):
+    def inc_proj_X(X):
+        uu, vv = unflatten_fields(X, pm)
+        fu = forward(uu)
+        fv = forward(vv)
+        fu, fv = inc_proj(fu, fv, grid)
+        uu = inverse(fu)
+        vv = inverse(fv)
+        X  = flatten_fields(uu, vv)
+        return X
+    return inc_proj_X
+
+def application_function(evolve, pm, X, T, Y):
+    norm_X = np.linalg.norm(X)
+    def apply_A(dX, dT):
+        norm_dX = np.linalg.norm(dX)
+        epsilon = 1e-7*norm_X/norm_dX
+        #TODO: check if sol. projection needs to be performed to X+eps dX
+        deriv_x0 = evolve(X+epsilon*dX, T) - Y
         deriv_x0 = deriv_x0/epsilon
 
-        rhs = evolve(X, pm.dt) - X
-        rhs = rhs/pm.dt
+        dY_dT = evolve(Y, pm.dt) - Y
+        dY_dT = dY_dT/pm.dt
 
-        return np.concatenate([deriv_x0-dX, rhs*dT])
+        dX_dt = evolve(X, pm.dt) - X
+        dX_dt = dX_dt/pm.dt
+        t_proj = np.dot(dX_dt, dX)
+
+        return np.append(deriv_x0-dX+dY_dT*dT, t_proj)
     return apply_A

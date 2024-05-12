@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy
 import time
-        
-def GMRES(A, b, x0, n, tol = 1e-15, restart = 0):
+
+def GMRES(apply_A, b, n, tol = 1e-15):
     """
     Performs Generalized Minimal Residues to find x that approximates the solution to Ax=b. 
     
@@ -23,15 +23,19 @@ def GMRES(A, b, x0, n, tol = 1e-15, restart = 0):
     """
 
     #Residual vector from which to build Krylov subspace of A (Ar, A^2 r,.., A^n r)
-    r = b - A@x0
-    
-    #Define norms of vectors
-    b_norm = np.linalg.norm(b,2)
-    r_norm = np.linalg.norm(r,2)
+    # if (dX0 == np.zeros_like(dX0)).all():
+    #     r = b
+    # else:
+    #     r = b - apply_A(dX0, 0.)
+    # #Define norms of vectors
+    # b_norm = np.linalg.norm(b)
 
-    #Compute initial error and save in list
-    error = r_norm/b_norm
-    e = [error]
+    # #Compute initial error and save in list
+    # error = r_norm/b_norm
+
+    r = b
+    r_norm = b_norm = np.linalg.norm(r)
+    e = [1.] #r_norm/b_norm
 
     #Initialize sine and cosine Givens 1d vectors. This allows the algorithm to be O(k) instead of O(k^2)
     sn = np.zeros(n)
@@ -39,7 +43,7 @@ def GMRES(A, b, x0, n, tol = 1e-15, restart = 0):
 
     #Unitary base of Krylov subspace (maximum number of cols: n)
     Q = np.zeros((len(r), n))
-    Q[:,0] = r/np.linalg.norm(r, 2) #Normalize the input vector
+    Q[:,0] = r/np.linalg.norm(r) #Normalize the input vector
 
     #Hessenberg matrix
     H = np.zeros((n+1,n))
@@ -51,18 +55,12 @@ def GMRES(A, b, x0, n, tol = 1e-15, restart = 0):
     #Beta vector to be multiplied by Givens matrices.
     beta = e1 * r_norm
 
+    with open('error_gmres.txt', 'a') as file:
+        file.write('GMRes: \n')
     #In each iteration a new column of Q and H is computed.
     #The H column is then modified using Givens matrices so that H becomes a triangular matrix R
     for k in range(1,n):
-        #This is only of the GMRES(N) restart is used.
-        #TODO: debug
-        if restart != 0:
-            N = restart
-            k = (k % N)
-            if k == 0:
-                k = N
-
-        Q[:,k], H[:k+1,k-1] = arnoldi_step(A, Q, H, k, tol) #Perform Arnoldi iteration to add column to Q (m entries) and to H (k entries)  
+        Q[:,k], H[:k+1,k-1] = arnoldi_step(apply_A, Q, k) #Perform Arnoldi iteration to add column to Q (m entries) and to H (k entries)  
         
         H[:k+1,k-1], cs[k-1],sn[k-1] = apply_givens_rotation(H[:k+1,k-1],cs,sn,k) #eliminate the last element in H ith row and update the rotation matrix
 
@@ -75,28 +73,22 @@ def GMRES(A, b, x0, n, tol = 1e-15, restart = 0):
 
         #save the error
         e.append(error)
+        with open('error_gmres.txt', 'a') as file:
+            file.write(f'error({k}) = {error} \n')
 
         if error<tol:
             break
-
-        #TODO: debug (GMRES(N))
-        if restart!= 0 and k == N:
-            #calculate result
-            y = back_substitution(H[:k,:k], beta[:k])
-            xN = x0 + Q[:,:k]@y
-            rN = b - A@xN
-            Q, H, beta, cs, sn = initialize_vectors(rN, n)
-
     #calculate result by solving a triangular system of equations H*y=beta
     y = back_substitution(H[:k,:k], beta[:k])
-    x = x0 + Q[:,:k]@y
-    return x, e
+    # x = x0 + Q[:,:k]@y
+    x = Q[:,:k]@y
+    return x[:-1], x[-1], e
 
 
-def arnoldi_step(A, Q, H, k, tol):
+def arnoldi_step(apply_A, Q, k):
     """Performs k_th Arnoldi iteration of Krylov subspace spanned by <r, Ar, A^2 r,.., A^(k-1) r> 
     """
-    v = A @ Q[:,k-1] #generate candidate vector
+    v = apply_A(Q[:-1,k-1],Q[-1,k-1]) #generate candidate vector
     h = np.zeros(k+1)
     for j in range(k):#substract projections of previous vectors
         h[j] = np.dot(Q[:,j], v)
