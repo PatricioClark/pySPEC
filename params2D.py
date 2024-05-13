@@ -15,5 +15,7 @@ T_guess = 5.5
 t_guess = 250
 N_newt = 5
 N_gmres = 10
+N_hook = 10
 tol_newt = 1e-5
 tol_gmres = 1e-5
+hook = True

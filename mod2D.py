@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from gmres_kol import back_substitution
 
 class Grid:
     def __init__(self, pm):
@@ -106,6 +107,11 @@ def unflatten_fields(X, pm):
     vv = X[ll:].reshape((pm.Nx, pm.Ny))
     return uu, vv
 
+def save_fields(X, fname, pm):
+    uu, vv = unflatten_fields(X, pm)
+    np.savez(f'output/fields_{fname}.npz', uu=uu,vv=vv)
+
+
 def evolution_function(grid, pm):
     # Forcing
     kf = 4
@@ -195,3 +201,43 @@ def application_function(evolve, pm, X, T, Y):
 
         return np.append(deriv_x0-dX+dY_dT*dT, t_proj)
     return apply_A
+
+def trust_region(Delta, H, beta, k, Q):
+    y = back_substitution(H[:k,:k], beta[:k])
+    mu = 0.
+    for j in range(100):
+        y_norm = np.linalg.norm(y)
+        if y_norm <= Delta:
+            break
+        else:
+            mu = 2.**j
+            H = H_transform(H, mu, k)
+            y = back_substitution(H[:k,:k], beta[:k])
+    x = Q[:,:k]@y
+    return x[:-1], x[-1]
+
+def H_transform(H, mu, k):
+    for i in range(k):
+        H[i,i] += mu/H[i,i] 
+    return H
+
+def hookstep(H, beta, Q, k, X, T, b, inc_proj_X, evolve, pm):
+    b = np.append(b, 0.)
+    b_norm = np.linalg.norm(b)
+    y = back_substitution(H[:k,:k], beta[:k])
+    Delta = np.linalg.norm(y)
+    for i_hook in range(pm.N_hook):
+        dX, dT = trust_region(Delta, H, beta, k, Q)
+        dX = inc_proj_X(dX)
+        X_new = X+dX
+        T_new = T+dT
+        Y = evolve(X_new, T_new)
+        b_new = X_new-Y
+        b_new = np.append(b_new, 0.)
+        with open('hookstep.txt', 'a') as file:
+            file.write(f'Hookstep iter {i_hook}. |b| = {np.linalg.norm(b_new)}\n')
+        if np.linalg.norm(b_new)<= b_norm:
+            break
+        else:
+            Delta *= .5
+    return X_new, Y, T_new, b_new 

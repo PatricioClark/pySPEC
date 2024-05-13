@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import scipy
 import time
 
-def GMRES(apply_A, b, n, tol = 1e-15):
+def GMRES(apply_A, b, n, tol = 1e-15, hookstep = False):
     """
     Performs Generalized Minimal Residues to find x that approximates the solution to Ax=b. 
     
@@ -78,11 +78,14 @@ def GMRES(apply_A, b, n, tol = 1e-15):
 
         if error<tol:
             break
-    #calculate result by solving a triangular system of equations H*y=beta
-    y = back_substitution(H[:k,:k], beta[:k])
-    # x = x0 + Q[:,:k]@y
-    x = Q[:,:k]@y
-    return x[:-1], x[-1], e
+    if hookstep==False:        
+        #calculate result by solving a triangular system of equations H*y=beta
+        y = back_substitution(H[:k,:k], beta[:k])
+        # x = x0 + Q[:,:k]@y
+        x = Q[:,:k]@y
+        return x[:-1], x[-1]
+    else:
+        return H, beta, Q, k
 
 
 def arnoldi_step(apply_A, Q, k):

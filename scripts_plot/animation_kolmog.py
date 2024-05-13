@@ -16,7 +16,8 @@ save_freq = 50
 nx = ny = 256
 Nt = int(T/dt //save_freq)
 
-path = '/share/data4/jcullen/pySPEC/run1/'
+# path = '/share/data4/jcullen/pySPEC/run1/'
+path = 'C:/Users/joaco/Desktop/FCEN/Tesis/Patrick/pySPEC/'
 fields = np.load(f'{path}output/fields_t.npz')
 uu_t = fields['uu_t']
 vv_t = fields['vv_t']
@@ -118,7 +119,7 @@ def anim(V,label,t_sta,t_end, cant_frames, save = False):
 
     # Display the animation
     
-anim(uu_t, 'u(x,y)',0,199, 50 , save =True)
+anim(uu_t, 'u(x,y)',0,499, int(499*20) , save =True)
 plt.show()
 # anim(vv_t, 'v(x,y)', save = False)
 # plt.show()
