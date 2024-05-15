@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import scipy
 import time
 
-def GMRES(apply_A, b, n, tol = 1e-15, hookstep = False):
+def GMRES(apply_A, b, n, i_newt, tol = 1e-15, hookstep = False):
     """
     Performs Generalized Minimal Residues to find x that approximates the solution to Ax=b. 
     
@@ -21,17 +21,6 @@ def GMRES(apply_A, b, n, tol = 1e-15, hookstep = False):
     e: error of each iteration, where the error is calculated as ||r_k||/||b|| where r_k is (b-A*x_k), the residue at 
     the k iteration.
     """
-
-    #Residual vector from which to build Krylov subspace of A (Ar, A^2 r,.., A^n r)
-    # if (dX0 == np.zeros_like(dX0)).all():
-    #     r = b
-    # else:
-    #     r = b - apply_A(dX0, 0.)
-    # #Define norms of vectors
-    # b_norm = np.linalg.norm(b)
-
-    # #Compute initial error and save in list
-    # error = r_norm/b_norm
 
     r = b
     r_norm = b_norm = np.linalg.norm(r)
@@ -55,8 +44,6 @@ def GMRES(apply_A, b, n, tol = 1e-15, hookstep = False):
     #Beta vector to be multiplied by Givens matrices.
     beta = e1 * r_norm
 
-    with open('error_gmres.txt', 'a') as file:
-        file.write('GMRes: \n')
     #In each iteration a new column of Q and H is computed.
     #The H column is then modified using Givens matrices so that H becomes a triangular matrix R
     for k in range(1,n):
@@ -73,12 +60,12 @@ def GMRES(apply_A, b, n, tol = 1e-15, hookstep = False):
 
         #save the error
         e.append(error)
-        with open('error_gmres.txt', 'a') as file:
-            file.write(f'error({k}) = {error} \n')
+        with open(f'prints/error_gmres/iter{i_newt}.txt', 'a') as file:
+            file.write(f'{k},{error}\n')
 
         if error<tol:
             break
-    if hookstep==False:        
+    if not hookstep:        
         #calculate result by solving a triangular system of equations H*y=beta
         y = back_substitution(H[:k,:k], beta[:k])
         # x = x0 + Q[:,:k]@y

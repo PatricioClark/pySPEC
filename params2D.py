@@ -1,7 +1,8 @@
 # Parameters
 Lx = 1.0 # Longitud del dominio
 Ly = 1.0 # Longitud del dominio
-T = 500.0  # Tiempo total de simulación
+T = 1500  # Tiempo total de simulación
+stat = 499700
 Nx = 256  # Número de puntos de la cuadrícula
 Ny = 256  # Número de puntos de la cuadrícula
 dt = 1e-3
@@ -11,11 +12,13 @@ print_freq = 10
 save_freq = 50
 fields_freq = 50 
 rkord = 2 # order of RK
-T_guess = 5.5
+
+#Parameters for Newton-Solver
+T_guess = 5.35
 t_guess = 250
-N_newt = 5
-N_gmres = 10
+N_newt = 200
+N_gmres = 50
 N_hook = 10
 tol_newt = 1e-5
-tol_gmres = 1e-5
+tol_gmres = 1e-9
 hook = True
