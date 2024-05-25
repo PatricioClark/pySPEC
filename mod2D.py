@@ -98,17 +98,39 @@ def save_fields(fu, fv, step):
     vv = inverse(fv)
     np.savez(f'output2/fields_{step:07}.npz', uu=uu,vv=vv,fu=fu,fv=fv)
 
-def flatten_fields(uu, vv):
-    return np.concatenate((uu.flatten(), vv.flatten()))
+def vort(uu, vv, grid):
+    fu, fv = forward(uu), forward(vv)
+    uy = inverse(deriv(fu, grid.ky))
+    vx = inverse(deriv(fv, grid.kx))
+    return uy - vx
 
-def unflatten_fields(X, pm):
-    ll = len(X)//2
-    uu = X[:ll].reshape((pm.Nx, pm.Ny))
-    vv = X[ll:].reshape((pm.Nx, pm.Ny))
+def inv_vort(oz, grid):
+    foz = forward(oz)
+    fu = np.divide(-deriv(foz, grid.ky), grid.k2, out = np.zeros_like(foz), where = grid.k2!=0.)
+    fv = np.divide(deriv(foz, grid.kx), grid.k2, out = np.zeros_like(foz), where = grid.k2!=0.)
+    uu, vv = inverse(fu), inverse(fv)
     return uu, vv
 
-def save_X(X, fname, pm):
-    uu, vv = unflatten_fields(X, pm)
+def flatten_fields(uu, vv, pm, grid):
+    if not pm.vort_X:
+        return np.concatenate((uu.flatten(), vv.flatten()))
+    else:
+        oz = vort(uu, vv, grid)
+        return oz.flatten()
+
+def unflatten_fields(X, pm, grid):
+    if not pm.vort_X:
+        ll = len(X)//2
+        uu = X[:ll].reshape((pm.Nx, pm.Ny))
+        vv = X[ll:].reshape((pm.Nx, pm.Ny))
+        return uu, vv
+    else:
+        oz = X.reshape((pm.Nx, pm.Ny))
+        uu, vv = inv_vort(oz, grid)
+        return uu, vv
+
+def save_X(X, fname, pm, grid):
+    uu, vv = unflatten_fields(X, pm, grid)
     np.savez(f'output/fields_{fname}.npz', uu=uu,vv=vv)
 
 
@@ -121,7 +143,7 @@ def evolution_function(grid, pm):
     fx, fy = inc_proj(fx, fy, grid)
 
     def evolve(X, T):
-        uu, vv = unflatten_fields(X, pm)
+        uu, vv = unflatten_fields(X, pm, grid)
         fu = forward(uu)
         fv = forward(vv)
         for step in range(int(T/pm.dt)):
@@ -167,53 +189,83 @@ def evolution_function(grid, pm):
 
         uu = inverse(fu)
         vv = inverse(fv)
-        X  = flatten_fields(uu, vv)
+        X  = flatten_fields(uu, vv, pm, grid)
         return X
     return evolve
 
 def inc_proj_X_function(grid, pm):
     def inc_proj_X(X):
-        uu, vv = unflatten_fields(X, pm)
+        uu, vv = unflatten_fields(X, pm, grid)
         fu = forward(uu)
         fv = forward(vv)
         fu, fv = inc_proj(fu, fv, grid)
         uu = inverse(fu)
         vv = inverse(fv)
-        X  = flatten_fields(uu, vv)
+        X  = flatten_fields(uu, vv, pm, grid)
         return X
     return inc_proj_X
 
-def application_function(evolve, pm, X, T, Y, i_newt):
-    norm_X = np.linalg.norm(X)
+def inf_trans_function(grid, pm):
+    def inf_trans(X):
+        uu, vv = unflatten_fields(X, pm, grid)
+        fu = forward(uu)
+        fv = forward(vv)
+        for i in range(fu.shape[0]):
+            for j in range(fu.shape[1]):
+                fu[i,j] = fu[i,j] *1.0j * grid.kx[i,j] / pm.Lx
+                fv[i,j] = fv[i,j] *1.0j * grid.kx[i,j] / pm.Lx
+        uu = inverse(fu)
+        vv = inverse(fv)
+        X  = flatten_fields(uu, vv, pm, grid)
+        return X
+    return inf_trans
 
-    def apply_A(dX, dT):
+def translation_function(grid, pm):
+    def translation(X, s):
+        uu, vv = unflatten_fields(X, pm, grid)
+        fu = forward(uu)
+        fv = forward(vv)
+        for i in range(fu.shape[0]):
+            for j in range(fu.shape[1]):
+                fu[i,j] = fu[i,j] * np.exp(1.0j*grid.kx[i,j]*s)
+                fv[i,j] = fv[i,j] * np.exp(1.0j*grid.kx[i,j]*s)
+        uu = inverse(fu)
+        vv = inverse(fv)
+        X  = flatten_fields(uu, vv, pm, grid)
+        return X
+    return translation
+
+def application_function(evolve, inf_trans, translation, pm, X, T, Y, s, i_newt):
+
+    #compute variables and derivatives used throughout gmres iterations
+    norm_X = np.linalg.norm(X)
+    Tx_Y = inf_trans(Y)
+    Tx_X = inf_trans(X)
+
+    dY_dT = evolve(Y, pm.dt) - Y
+    dY_dT = dY_dT/pm.dt
+
+    dX_dt = evolve(X, pm.dt) - X
+    dX_dt = dX_dt/pm.dt
+
+    def apply_A(dX, ds, dT):
         
-        #Without sol. projection
         norm_dX = np.linalg.norm(dX)
         epsilon = 1e-7*norm_X/norm_dX
-        #TODO: check if sol. projection needs to be performed to X+eps dX
-        deriv_x0 = evolve(X+epsilon*dX, T) - Y
+
+        deriv_x0 = evolve(X+epsilon*dX, T)
+        deriv_x0 = translation(deriv_x0,s) - Y
         deriv_x0 = deriv_x0/epsilon
 
-        #With sol. projection
-        # dX_sol = inc_proj_X(dX)
-        # norm_dX = np.linalg.norm(dX_sol)
-        # epsilon = 1e-7*norm_X/norm_dX
-        # #TODO: check if sol. projection needs to be performed to X+eps dX
-        # deriv_x0 = evolve(X+epsilon*dX_sol, T) - Y
-
-        dY_dT = evolve(Y, pm.dt) - Y
-        dY_dT = dY_dT/pm.dt
-
-        dX_dt = evolve(X, pm.dt) - X
-        dX_dt = dX_dt/pm.dt
         t_proj = np.dot(dX_dt, dX)
+        Tx_proj = np.dot(Tx_X, dX)
 
         with open(f'prints/apply_A/iter{i_newt}.txt', 'a') as file:
-            file.write(f'{round(norm_dX,4)},{np.linalg.norm(round(deriv_x0,4))},\
-                       {np.linalg.norm(round(dX_dt,4))},{round(np.linalg.norm(dY_dT,4))},{round(t_proj,4)}\n')
+            file.write(f'{round(norm_dX,4)},{round(np.linalg.norm(deriv_x0),4)},{round(np.linalg.norm(dX_dt),4)},\
+            {round(np.linalg.norm(dY_dT),4)},{round(t_proj,4)},{round(Tx_proj,4)}\n')
 
-        return np.append(deriv_x0-dX+dY_dT*dT, t_proj)
+        LHS = deriv_x0-dX+Tx_Y*ds+dY_dT*dT
+        return np.append(LHS, [Tx_proj, t_proj])
     return apply_A
 
 def trust_region(Delta, H, beta, k, Q):
@@ -230,34 +282,37 @@ def trust_region(Delta, H, beta, k, Q):
             y = back_substitution(H[:k,:k], beta[:k])
     
     x = Q[:,:k]@y
-    return x[:-1], x[-1]
+    return x[:-2], x[-2], x[-1]
 
 def H_transform(H, mu, k):
     for i in range(k):
         H[i,i] += mu/H[i,i] 
     return H
 
-def hookstep(H, beta, Q, k, X, T, b, inc_proj_X, evolve, pm, i_newt):
-    b = np.append(b, 0.)
-    b_norm = np.linalg.norm(b)
-    y = back_substitution(H[:k,:k], beta[:k])
-    Delta = np.linalg.norm(y)
-    
-    for i_hook in range(pm.N_hook):
-        dX, dT = trust_region(Delta, H, beta, k, Q)
-        dX = inc_proj_X(dX)
-        X_new = X+dX
-        T_new = T+dT
+def hookstep_function(inc_proj_X, evolve, translation, pm):
+    def hookstep(H, beta, Q, k, X, sx, T, b, i_newt):
+        b_norm = np.linalg.norm(b)
+        y = back_substitution(H[:k,:k], beta[:k])
+        Delta = np.linalg.norm(y)
+        
+        for i_hook in range(pm.N_hook):
+            dX, dsx, dT = trust_region(Delta, H, beta, k, Q)
+            dX = inc_proj_X(dX)
+            X_new = X+dX
+            sx_new = sx+dsx
+            T_new = T+dT
 
-        Y = evolve(X_new, T_new)
-        b_new = X_new-Y
-        b_new = np.append(b_new, 0.)
-        
-        with open(f'prints/hookstep/iter{i_newt}.txt', 'a') as file:
-            file.write(f'{i_hook+1},{np.linalg.norm(b_new)}\n')
-        
-        if np.linalg.norm(b_new)<= b_norm:
-            break
-        else:
-            Delta *= .5
-    return X_new, Y, T_new, b_new 
+            Y = evolve(X_new, T_new)
+            Y = translation(Y,sx_new)
+            b_new = X_new-Y
+            b_new = np.append(b_new, [0., 0.])
+            
+            with open(f'prints/hookstep/iter{i_newt}.txt', 'a') as file:
+                file.write(f'{i_hook+1},{round(np.linalg.norm(b_new),5)}\n')
+            
+            if np.linalg.norm(b_new)<= b_norm:
+                break
+            else:
+                Delta *= .5
+        return X_new, Y, sx_new, T_new, b_new 
+    return hookstep

@@ -78,7 +78,7 @@ def GMRES(apply_A, b, n, i_newt, tol = 1e-15, hookstep = False):
 def arnoldi_step(apply_A, Q, k):
     """Performs k_th Arnoldi iteration of Krylov subspace spanned by <r, Ar, A^2 r,.., A^(k-1) r> 
     """
-    v = apply_A(Q[:-1,k-1],Q[-1,k-1]) #generate candidate vector
+    v = apply_A(Q[:-2,k-1],Q[-2,k-1],Q[-1,k-1]) #generate candidate vector
     h = np.zeros(k+1)
     for j in range(k):#substract projections of previous vectors
         h[j] = np.dot(Q[:,j], v)

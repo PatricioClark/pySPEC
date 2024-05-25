@@ -1,9 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 def get_var_name(variable):
     globals_dict = globals()
     return [var_name for var_name in globals_dict if globals_dict[var_name] is variable][0] 
+
+def mkdir(path):
+    try:
+        os.mkdir(path)
+    except OSError as error:
+        print(error)  
+
 
 # with open('prints/b_error.txt', 'r') as file1, open('prints/solver.txt', 'r') as file2, \
 #         open('prints/error_gmres.txt', 'r') as file4, open('prints/hookstep.txt', 'a') as file4,\
@@ -13,6 +21,10 @@ b_error = np.loadtxt('prints/b_error.txt', delimiter = ',', skiprows = 1)
 solver = np.loadtxt('prints/solver.txt', delimiter = ',', skiprows = 1)
 
 iter_newt = b_error[:,0]
+
+mkdir('plots')
+mkdir('plots/prints_plots')
+mkdir('plots/prints_plots/apply_A')
 
 plt.figure()
 plt.plot(iter_newt, b_error[:,1])
@@ -30,8 +42,8 @@ plt.savefig(f'plots/prints_plots/T.png')
 plt.figure()
 plt.plot(iter_newt, solver[:,2])
 plt.xlabel('Iter. Newton')
-plt.ylabel('|X|')
-plt.savefig(f'plots/prints_plots/norm_X.png')
+plt.ylabel('sx')
+plt.savefig(f'plots/prints_plots/sx.png')
 
 plt.figure()
 for i in range(1,len(iter_newt)):
@@ -46,7 +58,7 @@ plt.savefig(f'plots/prints_plots/error_gmres.png')
 
 plt.figure()
 for i in range(1,len(iter_newt)):
-    hookstep = np.loadtxt(f'prints/hookstep/iter{i}.txt', delimiter = ',', skiprows = 1)
+    hookstep = np.loadtxt(f'prints/hookstep/iter{i}.txt', delimiter = ',', skiprows = 1, ndmin = 2)
     plt.plot(hookstep[:,0],hookstep[:,1], label = f'Iter. {i}')
 
 plt.xlabel('Iter. Hookstep')
@@ -54,7 +66,7 @@ plt.ylabel('|b|')
 plt.legend()
 plt.savefig(f'plots/prints_plots/hookstep.png')
 
-labels = ('|dX|','|dY/dX|','|dX/dt|','|dY/dT|','t_proj')
+labels = ('|dX|','|dY_dX|','|dX_dt|','|dY_dT|','t_proj')
 for i in range(1,len(iter_newt)):
     apply_A = np.loadtxt(f'prints/apply_A/iter{i}.txt', delimiter = ',', skiprows = 1)
     for j in range(5):
