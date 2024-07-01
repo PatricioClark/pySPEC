@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import scipy
 import time
 
-def GMRES(apply_A, b, n, i_newt, tol = 1e-15, hookstep = False):
+def GMRES(apply_A, b, i_newt, pm):
     """
     Performs Generalized Minimal Residues to find x that approximates the solution to Ax=b. 
     
@@ -25,21 +25,38 @@ def GMRES(apply_A, b, n, i_newt, tol = 1e-15, hookstep = False):
     r = b
     r_norm = b_norm = np.linalg.norm(r)
     e = [1.] #r_norm/b_norm
+    n = pm.N_gmres
 
-    #Initialize sine and cosine Givens 1d vectors. This allows the algorithm to be O(k) instead of O(k^2)
-    sn = np.zeros(n)
-    cs = np.zeros(n)
+    if pm.fvort: #X is complex
+        #Initialize sine and cosine Givens 1d vectors. This allows the algorithm to be O(k) instead of O(k^2)
+        sn = np.zeros(n,dtype='complex_')
+        cs = np.zeros(n,dtype='complex_')
 
-    #Unitary base of Krylov subspace (maximum number of cols: n)
-    Q = np.zeros((len(r), n))
-    Q[:,0] = r/np.linalg.norm(r) #Normalize the input vector
+        #Unitary base of Krylov subspace (maximum number of cols: n)
+        Q = np.zeros((len(r), n),dtype='complex_')
+        Q[:,0] = r/np.linalg.norm(r, 2) #Normalize the input vector
 
-    #Hessenberg matrix
-    H = np.zeros((n+1,n))
+        #Hessenberg matrix
+        H = np.zeros((n+1,n),dtype='complex_')
 
-    #First canonical vector:
-    e1 = np.zeros(n+1)
-    e1[0] = 1
+        #First canonical vector:
+        e1 = np.zeros(n+1,dtype = 'complex_')
+        e1[0] = 1
+
+    else: #X is real
+        sn = np.zeros(n)
+        cs = np.zeros(n)
+
+        #Unitary base of Krylov subspace (maximum number of cols: n)
+        Q = np.zeros((len(r), n))
+        Q[:,0] = r/np.linalg.norm(r) #Normalize the input vector
+
+        #Hessenberg matrix
+        H = np.zeros((n+1,n))
+
+        #First canonical vector:
+        e1 = np.zeros(n+1)
+        e1[0] = 1
 
     #Beta vector to be multiplied by Givens matrices.
     beta = e1 * r_norm
@@ -47,12 +64,12 @@ def GMRES(apply_A, b, n, i_newt, tol = 1e-15, hookstep = False):
     #In each iteration a new column of Q and H is computed.
     #The H column is then modified using Givens matrices so that H becomes a triangular matrix R
     for k in range(1,n):
-        Q[:,k], H[:k+1,k-1] = arnoldi_step(apply_A, Q, k) #Perform Arnoldi iteration to add column to Q (m entries) and to H (k entries)  
+        Q[:,k], H[:k+1,k-1] = arnoldi_step(apply_A, Q, k, pm) #Perform Arnoldi iteration to add column to Q (m entries) and to H (k entries)  
         
         H[:k+1,k-1], cs[k-1],sn[k-1] = apply_givens_rotation(H[:k+1,k-1],cs,sn,k) #eliminate the last element in H ith row and update the rotation matrix
 
         #update residual vector
-        beta[k] = -sn[k-1] * beta[k-1]
+        beta[k] = -sn[k-1].conj() * beta[k-1]
         beta[k-1] = cs[k-1] * beta[k-1]
         
         #||r_k|| can be obtained with the last element of beta because of the Givens algorithm
@@ -63,55 +80,63 @@ def GMRES(apply_A, b, n, i_newt, tol = 1e-15, hookstep = False):
         with open(f'prints/error_gmres/iter{i_newt}.txt', 'a') as file:
             file.write(f'{k},{error}\n')
 
-        if error<tol:
+        if error<pm.tol_gmres:
             break
-    if not hookstep:        
+
+    if not pm.hook:        
         #calculate result by solving a triangular system of equations H*y=beta
-        y = back_substitution(H[:k,:k], beta[:k])
-        # x = x0 + Q[:,:k]@y
+        y = back_substitution(H[:k,:k], beta[:k], pm)
         x = Q[:,:k]@y
+
         return x[:-1], x[-1]
     else:
         return H, beta, Q, k
 
 
-def arnoldi_step(apply_A, Q, k):
+def arnoldi_step(apply_A, Q, k, pm):
     """Performs k_th Arnoldi iteration of Krylov subspace spanned by <r, Ar, A^2 r,.., A^(k-1) r> 
     """
     v = apply_A(Q[:-2,k-1],Q[-2,k-1],Q[-1,k-1]) #generate candidate vector
-    h = np.zeros(k+1)
+
+    if pm.fvort: #X is complex    
+        h = np.zeros(k+1,dtype='complex_')
+    else: #X is real
+        h = np.zeros(k+1)
+
     for j in range(k):#substract projections of previous vectors
-        h[j] = np.dot(Q[:,j], v)
+        h[j] = np.dot(Q[:,j].conj(), v)
         v -= h[j] * Q[:,j]
+
     h[k] = np.linalg.norm(v, 2)
     return (v/h[k], h) #Returns k_th column of Q (python indexing) and k-1 column of H
-    # TODO: Check if i should verify if norm(v)!=0, i.e. the matrix A is not full rank
-    # if h[k] > tol:
-    #     return (v/h[k], h) #Returns k_th column of Q (python indexing) and k-1 column of H
-    # else:
-    #     print('Matrix A not full rank')
 
 
 def apply_givens_rotation(h, cs, sn, k):
     #Premultiply the last H column by the previous k-1 Givens matrices
     for i in range(k-1):
         temp = cs[i]*h[i] + sn[i]*h[i+1]
-        h[i+1] = -sn[i]*h[i] + cs[i]*h[i+1]
+        h[i+1] = -sn[i].conj()*h[i] + cs[i].conj()*h[i+1]
         h[i] = temp        
+
     hip = np.sqrt(np.abs(h[k-1])**2+np.abs(h[k])**2)
-    cs_k, sn_k = h[k-1]/hip, h[k]/hip
+    cs_k, sn_k = h[k-1].conj()/hip, h[k].conj()/hip
+
     #Update the last H entries and eliminate H[k,k-1] to obtain a triangular matrix R
     h[k-1] = cs_k*h[k-1] + sn_k*h[k]
     h[k] = 0
     return h, cs_k, sn_k
 
 
-def back_substitution(R, b):
+def back_substitution(R, b, pm):
     """
     Solves the equation Rx = b, where R is a square right triangular matrix
     """
     n = len(b)
-    x = np.zeros_like(b)
+    if pm.fvort: #X is complex    
+        x = np.zeros_like(b,dtype='complex_')
+    else: #X is real
+        x = np.zeros_like(b)
+    
     for i in range(n-1, -1, -1):
         aux = 0
         for j in range(i+1, n):

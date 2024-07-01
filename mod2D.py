@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from gmres_kol import back_substitution
+import os
 
 class Grid:
     def __init__(self, pm):
@@ -65,71 +66,49 @@ def inc_proj(fu, fv, grid):
     ''' Project onto solenoidal modes '''
     return grid.pxx*fu + grid.pxy*fv, grid.pxy*fu + grid.pyy*fv
 
-def balance(fu, fv, fx, fy, grid, pm, step):
-    u2 = inner(fu, fv, fu, fv)
-    eng = 0.5 * avg(u2, grid)
-    inj = avg(inner(fu, fv, fx, fy), grid)
-    ens = - pm.nu * avg(grid.k2*u2, grid)
-
-    with open('balance.dat','a') as ff:
-        print(f'{step*pm.dt}, {eng}, {inj}, {ens}', file=ff) 
-
-def check(fu, fv, fx, fy, grid, pm, step):
-    u2 = inner(fu, fv, fu, fv)
-
-    uy = inverse(deriv(fu, grid.ky))
-    vx = inverse(deriv(fv, grid.kx))
-    oz = uy - vx
-
-    plt.figure(3)
-    plt.imshow(oz)
-    plt.colorbar()
-    plt.savefig(f'plots/vor_{step:06}.png')
-
-    plt.figure(5)
-    uk = np.array([np.sum(u2[np.where(grid.kr == ki)]) for ki in range(pm.Nx//2)])
-    plt.loglog(0.5 * grid.norm * uk)
-    plt.savefig(f'plots/uk_{step:06}.png')
-
-    plt.close('all')
-
-def save_fields(fu, fv, step):
-    uu = inverse(fu)
-    vv = inverse(fv)
-    np.savez(f'output2/fields_{step:07}.npz', uu=uu,vv=vv,fu=fu,fv=fv)
-
-def vort(uu, vv, grid):
+def vort(uu, vv, pm, grid):
+    ''' Computes vorticity field '''
     fu, fv = forward(uu), forward(vv)
     uy = inverse(deriv(fu, grid.ky))
     vx = inverse(deriv(fv, grid.kx))
-    return uy - vx
+    if not pm.fvort:
+        return uy - vx
+    else:
+        return forward(uy-vx)
 
-def inv_vort(oz, grid):
-    foz = forward(oz)
+def inv_vort(oz, pm, grid):
+    ''' Computes uu,vv from oz vorticity'''
+    if not pm.fvort:
+        foz = forward(oz)
+    else:
+        foz = oz
     fu = np.divide(-deriv(foz, grid.ky), grid.k2, out = np.zeros_like(foz), where = grid.k2!=0.)
     fv = np.divide(deriv(foz, grid.kx), grid.k2, out = np.zeros_like(foz), where = grid.k2!=0.)
     uu, vv = inverse(fu), inverse(fv)
     return uu, vv
 
 def flatten_fields(uu, vv, pm, grid):
-    if not pm.vort_X:
+    ''' Transforms uu, vv, to a 1d variable X (if vort saves oz)'''
+    if not (pm.vort_X or pm.fvort):
         return np.concatenate((uu.flatten(), vv.flatten()))
     else:
-        oz = vort(uu, vv, grid)
+        oz = vort(uu, vv, pm, grid)
         return oz.flatten()
 
 def unflatten_fields(X, pm, grid):
-    if not pm.vort_X:
+    ''' Transforms 1d variable X to uu,vv '''
+    if not (pm.vort_X or pm.fvort):
         ll = len(X)//2
         uu = X[:ll].reshape((pm.Nx, pm.Ny))
         vv = X[ll:].reshape((pm.Nx, pm.Ny))
         return uu, vv
     else:
         oz = X.reshape((pm.Nx, pm.Ny))
-        uu, vv = inv_vort(oz, grid)
+        uu, vv = inv_vort(oz, pm, grid)
         return uu, vv
 
 def save_X(X, fname, pm, grid):
+    ''' saves 1d variable X '''
     uu, vv = unflatten_fields(X, pm, grid)
     np.savez(f'output/fields_{fname}.npz', uu=uu,vv=vv)
 
@@ -143,6 +122,7 @@ def evolution_function(grid, pm):
     fx, fy = inc_proj(fx, fy, grid)
 
     def evolve(X, T):
+        ''' Evolves 1d vector X a time T '''
         uu, vv = unflatten_fields(X, pm, grid)
         fu = forward(uu)
         fv = forward(vv)
@@ -195,6 +175,7 @@ def evolution_function(grid, pm):
 
 def inc_proj_X_function(grid, pm):
     def inc_proj_X(X):
+        ''' Projects X to solenoidal modes '''
         uu, vv = unflatten_fields(X, pm, grid)
         fu = forward(uu)
         fv = forward(vv)
@@ -207,13 +188,19 @@ def inc_proj_X_function(grid, pm):
 
 def inf_trans_function(grid, pm):
     def inf_trans(X):
+        ''' Performs derivative of X in x direction '''
         uu, vv = unflatten_fields(X, pm, grid)
         fu = forward(uu)
         fv = forward(vv)
-        for i in range(fu.shape[0]):
-            for j in range(fu.shape[1]):
-                fu[i,j] = fu[i,j] *1.0j * grid.kx[i,j] / pm.Lx
-                fv[i,j] = fv[i,j] *1.0j * grid.kx[i,j] / pm.Lx
+        deriv(fu, grid.kx)
+        deriv(fv, grid.kx)
+
+        #previous slow version used in solver
+        # for i in range(fu.shape[0]):
+        #     for j in range(fu.shape[1]):
+        #         fu[i,j] = fu[i,j] *1.0j * grid.kx[i,j] / pm.Lx
+        #         fv[i,j] = fv[i,j] *1.0j * grid.kx[i,j] / pm.Lx
+
         uu = inverse(fu)
         vv = inverse(fv)
         X  = flatten_fields(uu, vv, pm, grid)
@@ -222,13 +209,18 @@ def inf_trans_function(grid, pm):
 
 def translation_function(grid, pm):
     def translation(X, s):
+        ''' Performs finite translation '''
         uu, vv = unflatten_fields(X, pm, grid)
         fu = forward(uu)
         fv = forward(vv)
-        for i in range(fu.shape[0]):
-            for j in range(fu.shape[1]):
-                fu[i,j] = fu[i,j] * np.exp(1.0j*grid.kx[i,j]*s)
-                fv[i,j] = fv[i,j] * np.exp(1.0j*grid.kx[i,j]*s)
+        fu = fu * np.exp(1.0j*grid.kx*s)
+        fv = fv * np.exp(1.0j*grid.kx*s)
+
+        # #previous slow version used in solver
+        # for i in range(fu.shape[0]):
+        #     for j in range(fu.shape[1]):
+        #         fu[i,j] = fu[i,j] * np.exp(1.0j*grid.kx[i,j]*s)
+        #         fv[i,j] = fv[i,j] * np.exp(1.0j*grid.kx[i,j]*s)
         uu = inverse(fu)
         vv = inverse(fv)
         X  = flatten_fields(uu, vv, pm, grid)
@@ -236,7 +228,7 @@ def translation_function(grid, pm):
     return translation
 
 def application_function(evolve, inf_trans, translation, pm, X, T, Y, s, i_newt):
-
+    ''' Updates matrix A (from newton method) for every newton iteration'''
     #compute variables and derivatives used throughout gmres iterations
     norm_X = np.linalg.norm(X)
     Tx_Y = inf_trans(Y)
@@ -249,7 +241,7 @@ def application_function(evolve, inf_trans, translation, pm, X, T, Y, s, i_newt)
     dX_dt = dX_dt/pm.dt
 
     def apply_A(dX, ds, dT):
-        
+        ''' Applies A matrix to vector (dX,ds,dT)^t  '''        
         norm_dX = np.linalg.norm(dX)
         epsilon = 1e-7*norm_X/norm_dX
 
@@ -257,8 +249,8 @@ def application_function(evolve, inf_trans, translation, pm, X, T, Y, s, i_newt)
         deriv_x0 = translation(deriv_x0,s) - Y
         deriv_x0 = deriv_x0/epsilon
 
-        t_proj = np.dot(dX_dt, dX)
-        Tx_proj = np.dot(Tx_X, dX)
+        t_proj = np.dot(dX_dt.conj(), dX).real
+        Tx_proj = np.dot(Tx_X.conj(), dX).real
 
         with open(f'prints/apply_A/iter{i_newt}.txt', 'a') as file:
             file.write(f'{round(norm_dX,4)},{round(np.linalg.norm(deriv_x0),4)},{round(np.linalg.norm(dX_dt),4)},\
@@ -268,39 +260,42 @@ def application_function(evolve, inf_trans, translation, pm, X, T, Y, s, i_newt)
         return np.append(LHS, [Tx_proj, t_proj])
     return apply_A
 
-def trust_region(Delta, H, beta, k, Q):
-    y = back_substitution(H[:k,:k], beta[:k])
+def trust_region(Delta, H, beta, k, Q, pm):
+    ''' Applies trust region to solution provided by GMRes '''
+    y = back_substitution(H[:k,:k], beta[:k], pm) #computes initial solution by GMRes
     mu = 0.
 
-    for j in range(100):
+    for j in range(100): #100 big enough to ensure that condition is satisfied
         y_norm = np.linalg.norm(y)
         if y_norm <= Delta:
             break
         else:
             mu = 2.**j
             H = H_transform(H, mu, k)
-            y = back_substitution(H[:k,:k], beta[:k])
+            y = back_substitution(H[:k,:k], beta[:k], pm) #updates solution with trust region
     
     x = Q[:,:k]@y
     return x[:-2], x[-2], x[-1]
 
 def H_transform(H, mu, k):
+    ''' Performs trust region transform to GMRes Hessenberg matrix H '''
     for i in range(k):
         H[i,i] += mu/H[i,i] 
     return H
 
 def hookstep_function(inc_proj_X, evolve, translation, pm):
     def hookstep(H, beta, Q, k, X, sx, T, b, i_newt):
+        ''' Performs hookstep on solution given by GMRes untill new |b| is less than previous |b| (or max iter of hookstep is reached) '''
         b_norm = np.linalg.norm(b)
-        y = back_substitution(H[:k,:k], beta[:k])
+        y = back_substitution(H[:k,:k], beta[:k], pm)
         Delta = np.linalg.norm(y)
         
         for i_hook in range(pm.N_hook):
-            dX, dsx, dT = trust_region(Delta, H, beta, k, Q)
+            dX, dsx, dT = trust_region(Delta, H, beta, k, Q, pm)
             dX = inc_proj_X(dX)
             X_new = X+dX
-            sx_new = sx+dsx
-            T_new = T+dT
+            sx_new = sx+dsx.real
+            T_new = T+dT.real
 
             Y = evolve(X_new, T_new)
             Y = translation(Y,sx_new)
@@ -313,6 +308,6 @@ def hookstep_function(inc_proj_X, evolve, translation, pm):
             if np.linalg.norm(b_new)<= b_norm:
                 break
             else:
-                Delta *= .5
+                Delta *= .5 #reduce trust region
         return X_new, Y, sx_new, T_new, b_new 
     return hookstep

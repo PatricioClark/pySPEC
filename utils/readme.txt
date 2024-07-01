@@ -1,0 +1,5 @@
+- animation_kolmog -> for animations (trouble running in pinky because of backend)
+- plot_R_ginput -> to obtain guessed orbits selecting local minimums of R
+- save_balance -> saves balance of output1,2,3
+- save_R -> saves R for output1,2,3
+- scripts_orbs -> for making plots of each orbit
