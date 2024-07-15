@@ -83,14 +83,14 @@ def GMRES(apply_A, b, i_newt, pm):
         if error<pm.tol_gmres:
             break
 
-    if not pm.hook:        
+    if pm.hook or pm.ls:
+        return H, beta, Q, k
+    else:        
         #calculate result by solving a triangular system of equations H*y=beta
         y = back_substitution(H[:k,:k], beta[:k], pm)
         x = Q[:,:k]@y
 
         return x[:-1], x[-1]
-    else:
-        return H, beta, Q, k
 
 
 def arnoldi_step(apply_A, Q, k, pm):
