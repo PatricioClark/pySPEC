@@ -1,8 +1,5 @@
 import numpy as np
-from tqdm import tqdm
 import matplotlib.pyplot as plt
-from IPython import get_ipython
-get_ipython().run_line_magic('matplotlib', 'qt5')
 
 #%%
 L = 50 # Longitud del dominio
