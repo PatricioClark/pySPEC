@@ -1,0 +1,10 @@
+{
+    "dim": 1,
+    "solver": "KuramotoSivashinsky",
+    "L": 22,
+    "T": 64,
+    "Nx": 128,
+    "dt": 1e-4,
+    "rkord": 2,
+    "stat": 0
+}
