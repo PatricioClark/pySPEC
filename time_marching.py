@@ -29,6 +29,6 @@ fields = mod.initial_conditions(grid, pm)
 for step in range(int(pm.T/pm.dt)):
     fields = evolve(fields, pm.dt)
 
-    # if step % pm.save_freq == 0:
-    #     np.savez(f'{pm.output_dir}/fields_{step:06}', uu=fields['uu'], vv=fields['vv'])
+    if step % pm.save_freq == 0:
+        mod.balance(grid, fields)
 

@@ -7,64 +7,86 @@ They must all return the fields in Fourier space.
 import numpy as np
 import mod_ps2D as mod
 
-def kolmogorov_flow(grid, pm):
+import abc
+
+class Solver(abc.ABC):
+    @abc.abstractmethod
+    def evolve(self, fields, T):
+        pass
+
+    @abc.abstractmethod
+    def check_balance(self, fields, tt):
+        pass
+
+    @abc.abstractmethod
+    def write_spectra(self, fields, tt):
+        pass
+
+    @abc.abstractmethod
+    def write_fields(self, fields, tt):
+        pass
+
+class KolmogorovFlow(Solver):
     '''
     Kolmogorov flow: 2D Navier-Stokes with fx = sin(2*pi*kf*y/Ly) forcing.
 
     See Eq. (6.143) in Pope's Turbulent flows for details on the Fourier
     decomposition of the NS equations and the pressure proyector.
     '''
-    # Forcing
-    kf = 4
-    fx = np.sin(2*np.pi*kf*grid.yy/pm.Ly)
-    fx = mod.forward(fx)
-    fy = np.zeros((pm.Nx, pm.Nx), dtype=complex)
-    fx, fy = mod.inc_proj(fx, fy, grid)
+    def __init__(self, grid, pm, kf=4):
+        self.grid = grid
+        self.pm = pm
 
-    def evolve(fields, T):
+        # Forcing
+        self.kf = kf
+        self.fx = np.sin(2*np.pi*kf*grid.yy/pm.Ly)
+        self.fx = mod.forward(self.fx)
+        self.fy = np.zeros((pm.Nx, pm.Nx), dtype=complex)
+        self.fx, self.fy = mod.inc_proj(self.fx, self.fy, grid)
+
+    def evolve(self, fields, T):
         ''' Evolves velocity fields to time T '''
         fu, fv = fields
 
-        Nt = round(T/pm.dt)
+        Nt = round(T/self.pm.dt)
         for step in range(Nt):
             # Store previous time step
             fup = np.copy(fu)
             fvp = np.copy(fv)
        
             # Time integration
-            for oo in range(pm.rkord, 0, -1):
+            for oo in range(self.pm.rkord, 0, -1):
                 # Non-linear term
                 uu = mod.inverse(fu)
                 vv = mod.inverse(fv)
                 
-                ux = mod.inverse(mod.deriv(fu, grid.kx))
-                uy = mod.inverse(mod.deriv(fu, grid.ky))
+                ux = mod.inverse(mod.deriv(fu, self.grid.kx))
+                uy = mod.inverse(mod.deriv(fu, self.grid.ky))
 
-                vx = mod.inverse(mod.deriv(fv, grid.kx))
-                vy = mod.inverse(mod.deriv(fv, grid.ky))
+                vx = mod.inverse(mod.deriv(fv, self.grid.kx))
+                vy = mod.inverse(mod.deriv(fv, self.grid.ky))
 
                 gx = mod.forward(uu*ux + vv*uy)
                 gy = mod.forward(uu*vx + vv*vy)
-                gx, gy = mod.inc_proj(gx, gy, grid)
+                gx, gy = mod.inc_proj(gx, gy, self.grid)
 
                 # Equations
-                fu = fup + (grid.dt/oo) * (
+                fu = fup + (self.grid.dt/oo) * (
                     - gx
-                    - pm.nu * grid.k2 * fu 
-                    + fx
+                    - self.pm.nu * self.grid.k2 * fu 
+                    + self.fx
                     )
 
-                fv = fvp + (grid.dt/oo) * (
+                fv = fvp + (self.grid.dt/oo) * (
                     - gy
-                    - pm.nu * grid.k2 * fv 
-                    + fy
+                    - self.pm.nu * self.grid.k2 * fv 
+                    + self.fy
                     )
 
                 # de-aliasing
-                fu[grid.zero_mode] = 0.0 
-                fv[grid.zero_mode] = 0.0 
-                fu[grid.dealias_modes] = 0.0 
-                fv[grid.dealias_modes] = 0.0
+                fu[self.grid.zero_mode] = 0.0 
+                fv[self.grid.zero_mode] = 0.0 
+                fu[self.grid.dealias_modes] = 0.0 
+                fv[self.grid.dealias_modes] = 0.0
 
         return [fu, fv]
-    return evolve

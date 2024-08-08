@@ -63,18 +63,18 @@ def inc_proj(fu, fv, grid):
     ''' Project onto solenoidal modes '''
     return grid.pxx*fu + grid.pxy*fv, grid.pxy*fu + grid.pyy*fv
 
-# def check(fu, fv, grid, pm, step, nstep):
-#     u2 = inner(fu, fv, fu, fv)
+def check(fu, fv, grid, pm, step, nstep):
+    u2 = inner(fu, fv, fu, fv)
 
-#     uy = inverse(deriv(fu, grid.ky))
-#     vx = inverse(deriv(fv, grid.kx))
-#     oz = uy - vx
+    uy = inverse(deriv(fu, grid.ky))
+    vx = inverse(deriv(fv, grid.kx))
+    oz = uy - vx
 
-#     uk = np.array([np.sum(u2[np.where(grid.kr == ki)]) for ki in range(pm.Nx//2)])
-#     Ek = 0.5 * grid.norm * uk
+    uk = np.array([np.sum(u2[np.where(grid.kr == ki)]) for ki in range(pm.Nx//2)])
+    Ek = 0.5 * grid.norm * uk
 
-#     np.save(f'Ek/nstep{nstep}/Ek.{step:06}', Ek)    
-#     np.save(f'evol/nstep{nstep}/oz.{step:06}', oz)    
+    np.save(f'Ek/nstep{nstep}/Ek.{step:06}', Ek)    
+    np.save(f'evol/nstep{nstep}/oz.{step:06}', oz)    
 
 
 def vort(uu, vv, pm, grid):
@@ -98,7 +98,7 @@ def inv_vort(oz, pm, grid):
     uu, vv = inverse(fu), inverse(fv)
     return uu, vv
 
-def save_oz_Ek(oz_t, Ek_t, fu, fv, grid, pm, idx):
+def save_oz_ek(oz_t, Ek_t, fu, fv, grid, pm, idx):
     ''' Save vorticity and spectrum '''
     #vorticity
     uy = inverse(deriv(fu, grid.ky))
