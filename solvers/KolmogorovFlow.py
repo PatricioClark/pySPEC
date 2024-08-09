@@ -5,30 +5,16 @@ They must all return the fields in Fourier space.
 '''
 
 import numpy as np
-import mod_ps2D as mod
+from ..mods import mod_ps2D as mod
 
-import abc
+from solver import Solver
 
-class Solver(abc.ABC):
-    @abc.abstractmethod
-    def evolve(self, fields, T):
-        pass
-
-    @abc.abstractmethod
-    def check_balance(self, fields, tt):
-        pass
-
-    @abc.abstractmethod
-    def write_spectra(self, fields, tt):
-        pass
-
-    @abc.abstractmethod
-    def write_fields(self, fields, tt):
-        pass
 
 class KolmogorovFlow(Solver):
     '''
     Kolmogorov flow: 2D Navier-Stokes with fx = sin(2*pi*kf*y/Ly) forcing.
+
+    nu = 1/Re
 
     See Eq. (6.143) in Pope's Turbulent flows for details on the Fourier
     decomposition of the NS equations and the pressure proyector.
@@ -44,7 +30,7 @@ class KolmogorovFlow(Solver):
         self.fy = np.zeros((pm.Nx, pm.Nx), dtype=complex)
         self.fx, self.fy = mod.inc_proj(self.fx, self.fy, grid)
 
-    def evolve(self, fields, T):
+    def evolve(self, fields, T, bstep=None, sstep=None, fstep=None):
         ''' Evolves velocity fields to time T '''
         fu, fv = fields
 
@@ -88,5 +74,8 @@ class KolmogorovFlow(Solver):
                 fv[self.grid.zero_mode] = 0.0 
                 fu[self.grid.dealias_modes] = 0.0 
                 fv[self.grid.dealias_modes] = 0.0
+
+            # Write outputs
+            self.write_outputs(fields, step, bstep, sstep, fstep)
 
         return [fu, fv]
