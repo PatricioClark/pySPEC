@@ -1,6 +1,6 @@
 import numpy as np
 
-class Grid:
+class Grid1D:
     def __init__(self, pm):
         xx, dx = np.linspace(0, pm.L, pm.Nx, endpoint=False, retstep=True)
         tt     = np.arange(0, pm.T, pm.dt)
@@ -26,13 +26,53 @@ class Grid:
         self.zero_mode = 0
         self.dealias_modes = (kk > pm.Nx/3)
 
+
+class Grid2D:
+    def __init__(self, pm):
+        xi, dx = np.linspace(0, pm.Lx, pm.Nx, endpoint=False, retstep=True)
+        yi, dy = np.linspace(0, pm.Ly, pm.Ny, endpoint=False, retstep=True)
+        xx, yy = np.meshgrid(xi, yi) #should add indexing = 'ij' if Nx and Ny are different for clarity
+        tt, dt = np.linspace(0, pm.T, pm.Nt, endpoint=False, retstep=True)
+
+        kx = np.fft.fftfreq(pm.Nx, dx) 
+        ky = np.fft.fftfreq(pm.Ny, dy) 
+        kx, ky = np.meshgrid(kx, ky)
+        k2 = kx**2 + ky**2
+        kk = np.sqrt(k2)
+        kr = np.round(kk)
+
+        self.xx = xx
+        self.dx = dx
+        self.yy = yy
+        self.dy = dy
+        self.tt = tt
+        self.dt = dt
+
+        self.kx = kx
+        self.ky = ky
+        self.k2 = k2
+        self.kk = kk
+        self.kr = kr
+
+        self.norm = 1.0/(pm.Nx*pm.Ny)**2
+
+        # De-aliasing modes
+        self.zero_mode = (0, 0)
+        self.dealias_modes = (kk > pm.Nx/3)
+
+        # Solenoidal mode proyector
+        with np.errstate(divide='ignore', invalid='ignore'):
+            self.pxx = np.nan_to_num(1.0 - kx**2/k2)
+            self.pyy = np.nan_to_num(1.0 - ky**2/k2)
+            self.pxy = np.nan_to_num(- kx*ky/k2)
+
 def forward(ui):
     ''' Forward Fourier transform '''
-    return np.fft.rfft(ui)
+    return np.fft.rfftn(ui)
 
 def inverse(ui):
     ''' Invserse Fourier transform '''
-    return np.fft.irfft(ui).real
+    return np.fft.irfftn(ui).real
 
 def deriv(ui, ki):
     ''' First derivative in ki direction '''
@@ -54,6 +94,10 @@ def energy(fields, grid):
     eng = 0.5*avg(u2, grid)
     return eng
 
+def inc_proj2D(fu, fv, grid):
+    ''' Project onto solenoidal modes '''
+    return grid.pxx*fu + grid.pxy*fv, grid.pxy*fu + grid.pyy*fv
+
 def initial_conditions(grid, pm):
     if pm.stat == 0:
         # Initial conditions
@@ -69,4 +113,3 @@ def initial_conditions(grid, pm):
         uu = fields['uu']
         fu = forward(uu)
     return [fu]
-
