@@ -15,15 +15,16 @@ class Solver(abc.ABC):
         return []
 
     def balance(self, fields, step):
-        return []
+        eng = ps.energy(fields, self.grid)
+        return [f'{self.pm.dt*step:.4e}', f'{eng:.6e}']
 
     def spectra(self, fields, step):
         pass
 
-    def fields(self, fields, step):
+    def outs(self, fields, step):
         pass
 
-    def write_outputs(self, fields, step, bstep, sstep, fstep):
+    def write_outputs(self, fields, step, bstep, sstep, ostep):
         if bstep is not None and step%bstep==0:
             bal = self.balance(fields, step)
             with open('balance.dat', 'a') as output:
@@ -32,8 +33,8 @@ class Solver(abc.ABC):
         if sstep is not None and step%sstep==0:
             self.spectra(fields, step)
             
-        if fstep is not None and step%fstep==0:
-            self.fields(fields, step)
+        if ostep is not None and step%ostep==0:
+            self.outs(fields, step)
 
 class KolmogorovFlow(Solver):
     '''
@@ -44,16 +45,16 @@ class KolmogorovFlow(Solver):
     See Eq. (6.143) in Pope's Turbulent flows for details on the Fourier
     decomposition of the NS equations and the pressure proyector.
     '''
-    def __init__(self, grid, pm, kf=4):
-        self.grid = grid
+    def __init__(self, pm, kf=4):
+        self.grid = ps.Grid2D(pm)
         self.pm = pm
 
         # Forcing
         self.kf = kf
-        self.fx = np.sin(2*np.pi*kf*grid.yy/pm.Ly)
+        self.fx = np.sin(2*np.pi*kf*self.grid.yy/pm.Ly)
         self.fx = ps.forward(self.fx)
         self.fy = np.zeros((pm.Nx, pm.Nx), dtype=complex)
-        self.fx, self.fy = ps.inc_proj2D(self.fx, self.fy, grid)
+        self.fx, self.fy = ps.inc_proj2D(self.fx, self.fy, self.grid)
 
     def evolve(self, fields, T, bstep=None, sstep=None, fstep=None):
         ''' Evolves velocity fields to time T '''
@@ -101,17 +102,17 @@ class KolmogorovFlow(Solver):
                 fv[self.grid.dealias_modes] = 0.0
 
             # Write outputs
-            self.write_outputs(fields, step, bstep, sstep, fstep)
+            self.write_outputs([fu, fv], step, bstep, sstep, fstep)
 
         return [fu, fv]
 
 class KuramotoSivashinsky(Solver):
     ''' 1D Kuramoto Sivashinsky equation '''
-    def __init__(self, grid, pm):
-        self.grid = grid
+    def __init__(self, pm):
+        self.grid = ps.Grid1D(pm)
         self.pm   = pm
 
-    def evolve(self, fields, T, bstep=None, sstep=None, fstep=None):
+    def evolve(self, fields, T, bstep=None, sstep=None, ostep=None):
         ''' Evolves velocity fields to time T '''
         fu = fields[0]
 
@@ -137,10 +138,10 @@ class KuramotoSivashinsky(Solver):
                 fu[self.grid.dealias_modes] = 0.0 
 
             # Write outputs
-            self.write_outputs(fields, step, bstep, sstep, fstep)
+            self.write_outputs([fu], step, bstep, sstep, ostep)
 
         return [fu]
 
-    def balance(self, fields, step):
-        eng = ps.energy(fields, self.grid)
-        return [f'{self.pm.dt*step:.4e}', f'{eng:.6e}']
+    def outs(self, fields, step):
+        uu = ps.inverse(fields[0])
+        np.save(f'uu_{step:04}', uu)

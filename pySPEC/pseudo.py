@@ -5,7 +5,8 @@ class Grid1D:
         xx, dx = np.linspace(0, pm.L, pm.Nx, endpoint=False, retstep=True)
         tt     = np.arange(0, pm.T, pm.dt)
 
-        kx = np.fft.rfftfreq(pm.Nx, dx) 
+        ki = np.fft.rfftfreq(pm.Nx, 1/pm.Nx) 
+        kx = 2.0*np.pi*np.fft.rfftfreq(pm.Nx, dx) 
         k2 = kx**2
         kk = np.sqrt(k2)
         kr = np.round(kk)
@@ -19,12 +20,13 @@ class Grid1D:
         self.k2 = k2
         self.kk = kk
         self.kr = kr
+        self.ki = ki
 
-        self.norm = 1.0/pm.Nx**2
+        self.norm = 1.0/(pm.Nx**2)
 
         # De-aliasing modes
         self.zero_mode = 0
-        self.dealias_modes = (kk > pm.Nx/3)
+        self.dealias_modes = (ki > pm.Nx/3)
 
 
 class Grid2D:
@@ -80,7 +82,7 @@ def deriv(ui, ki):
 
 def avg(ui, grid):
     ''' Mean in Fourier space '''
-    return grid.norm * np.sum(ui)
+    return 2.0 * grid.norm * np.sum(ui)
 
 def inner(a, b):
     ''' Inner product '''
@@ -98,9 +100,10 @@ def inc_proj2D(fu, fv, grid):
     ''' Project onto solenoidal modes '''
     return grid.pxx*fu + grid.pxy*fv, grid.pxy*fu + grid.pyy*fv
 
-def initial_conditions(grid, pm):
+def initial_conditions1D(grid, pm):
     if pm.stat == 0:
         # Initial conditions
+        # uu = np.cos(2*np.pi*grid.xx/pm.L)
         uu = (0.3*np.cos(2*np.pi*3.0*grid.xx/pm.L) +
               0.4*np.cos(2*np.pi*5.0*grid.xx/pm.L) +
               0.5*np.cos(2*np.pi*4.0*grid.xx/pm.L) 
@@ -113,3 +116,22 @@ def initial_conditions(grid, pm):
         uu = fields['uu']
         fu = forward(uu)
     return [fu]
+
+def initial_conditions2D(grid, pm):
+    if pm.stat == 0:
+        # Initial conditions
+        uu = np.cos(2*np.pi*1.0*grid.yy/pm.Lx) + 0.1*np.sin(2*np.pi*2.0*grid.yy/pm.Lx)
+        vv = np.cos(2*np.pi*1.0*grid.xx/pm.Lx) + 0.2*np.cos(3*np.pi*2.0*grid.yy/pm.Lx)
+        fu = forward(uu)
+        fv = forward(vv)
+        fu, fv = inc_proj2D(fu, fv, grid)
+    else:
+        path = '/share/data4/jcullen/pySPEC/run1/'
+        f_name = f'fields_{pm.stat:06}'
+        fields = np.load(f'{path}output/{f_name}.npz')
+        uu = fields['uu']
+        vv = fields['vv']
+        fu = forward(uu)
+        fv = forward(vv)
+    return fu, fv
+
