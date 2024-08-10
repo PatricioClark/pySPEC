@@ -1,10 +1,11 @@
 {
     "dim": 1,
     "solver": "KuramotoSivashinsky",
-    "L": 22,
-    "T": 64,
+    "L": 22.0,
+    "T": 100.0,
     "Nx": 128,
-    "dt": 1e-4,
+    "dt": 1e-5,
     "rkord": 2,
+    "bstep": 10,
     "stat": 0
 }

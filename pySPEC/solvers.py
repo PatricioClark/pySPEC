@@ -10,8 +10,29 @@ import numpy as np
 import pseudo as ps
 
 class Solver(abc.ABC):
+    def __init__(self, pm):
+        self.grid = ps.Grid1D(pm)
+        self.pm = pm
+
+    def evolve(self, fields, T, bstep=None, sstep=None, ostep=None):
+        ''' Evolves velocity fields to time T '''
+
+        Nt = round(T/self.pm.dt)
+        for step in range(Nt):
+            # Store previous time step
+            prev = np.copy(fields)
+
+            # Time integration
+            for oo in range(self.pm.rkord, 0, -1):
+                fields = self.rkstep(fields, prev, oo)
+
+            # Write outputs
+            self.write_outputs(fields, step, bstep, sstep, ostep)
+
+        return fields
+
     @abc.abstractmethod
-    def evolve(self, fields, T, bstep=None, sstep=None, fstep=None):
+    def rkstep(self, fields, prev, oo):
         return []
 
     def balance(self, fields, step):
@@ -56,53 +77,43 @@ class KolmogorovFlow(Solver):
         self.fy = np.zeros((pm.Nx, pm.Nx), dtype=complex)
         self.fx, self.fy = ps.inc_proj2D(self.fx, self.fy, self.grid)
 
-    def evolve(self, fields, T, bstep=None, sstep=None, fstep=None):
-        ''' Evolves velocity fields to time T '''
+    def rkstep(self, fields, prev, oo):
+        # Unpack
         fu, fv = fields
+        fup, fvp = prev
 
-        Nt = round(T/self.pm.dt)
-        for step in range(Nt):
-            # Store previous time step
-            fup = np.copy(fu)
-            fvp = np.copy(fv)
-       
-            # Time integration
-            for oo in range(self.pm.rkord, 0, -1):
-                # Non-linear term
-                uu = ps.inverse(fu)
-                vv = ps.inverse(fv)
-                
-                ux = ps.inverse(ps.deriv(fu, self.grid.kx))
-                uy = ps.inverse(ps.deriv(fu, self.grid.ky))
+        # Non-linear term
+        uu = ps.inverse(fu)
+        vv = ps.inverse(fv)
+        
+        ux = ps.inverse(ps.deriv(fu, self.grid.kx))
+        uy = ps.inverse(ps.deriv(fu, self.grid.ky))
 
-                vx = ps.inverse(ps.deriv(fv, self.grid.kx))
-                vy = ps.inverse(ps.deriv(fv, self.grid.ky))
+        vx = ps.inverse(ps.deriv(fv, self.grid.kx))
+        vy = ps.inverse(ps.deriv(fv, self.grid.ky))
 
-                gx = ps.forward(uu*ux + vv*uy)
-                gy = ps.forward(uu*vx + vv*vy)
-                gx, gy = ps.inc_proj2D(gx, gy, self.grid)
+        gx = ps.forward(uu*ux + vv*uy)
+        gy = ps.forward(uu*vx + vv*vy)
+        gx, gy = ps.inc_proj2D(gx, gy, self.grid)
 
-                # Equations
-                fu = fup + (self.grid.dt/oo) * (
-                    - gx
-                    - self.pm.nu * self.grid.k2 * fu 
-                    + self.fx
-                    )
+        # Equations
+        fu = fup + (self.grid.dt/oo) * (
+            - gx
+            - self.pm.nu * self.grid.k2 * fu 
+            + self.fx
+            )
 
-                fv = fvp + (self.grid.dt/oo) * (
-                    - gy
-                    - self.pm.nu * self.grid.k2 * fv 
-                    + self.fy
-                    )
+        fv = fvp + (self.grid.dt/oo) * (
+            - gy
+            - self.pm.nu * self.grid.k2 * fv 
+            + self.fy
+            )
 
-                # de-aliasing
-                fu[self.grid.zero_mode] = 0.0 
-                fv[self.grid.zero_mode] = 0.0 
-                fu[self.grid.dealias_modes] = 0.0 
-                fv[self.grid.dealias_modes] = 0.0
-
-            # Write outputs
-            self.write_outputs([fu, fv], step, bstep, sstep, fstep)
+        # de-aliasing
+        fu[self.grid.zero_mode] = 0.0 
+        fv[self.grid.zero_mode] = 0.0 
+        fu[self.grid.dealias_modes] = 0.0 
+        fv[self.grid.dealias_modes] = 0.0
 
         return [fu, fv]
 
@@ -112,33 +123,23 @@ class KuramotoSivashinsky(Solver):
         self.grid = ps.Grid1D(pm)
         self.pm   = pm
 
-    def evolve(self, fields, T, bstep=None, sstep=None, ostep=None):
-        ''' Evolves velocity fields to time T '''
-        fu = fields[0]
+    def rkstep(self, fields, prev, oo):
+        # Unpack
+        fu  = fields[0]
+        fup = prev[0]
+        # Non-linear term
+        uu  = ps.inverse(fu)
+        fu2 = ps.forward(uu**2)
 
-        Nt = round(T/self.pm.dt)
-        for step in range(Nt):
-            # Store previous time step
-            fup = np.copy(fu)
+        fu = fup + (self.grid.dt/oo) * (
+            - (0.5*1.0j*self.grid.kx*fu2)
+            + ((self.grid.k2)*fu) 
+            - ((self.grid.k2**2)*fu)
+            )
 
-            # Time integration
-            for oo in range(self.pm.rkord, 0, -1):
-                # Non-linear term
-                uu  = ps.inverse(fu)
-                fu2 = ps.forward(uu**2)
-
-                fu = fup + (self.grid.dt/oo) * (
-                    - (0.5*1.0j*self.grid.kx*fu2)
-                    + ((self.grid.k2)*fu) 
-                    - ((self.grid.k2**2)*fu)
-                    )
-
-                # de-aliasing
-                fu[self.grid.zero_mode] = 0.0 
-                fu[self.grid.dealias_modes] = 0.0 
-
-            # Write outputs
-            self.write_outputs([fu], step, bstep, sstep, ostep)
+        # de-aliasing
+        fu[self.grid.zero_mode] = 0.0 
+        fu[self.grid.dealias_modes] = 0.0 
 
         return [fu]
 
