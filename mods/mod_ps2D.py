@@ -55,27 +55,16 @@ def avg(ui, grid):
     ''' Mean in Fourier space '''
     return grid.norm * np.sum(ui)
 
-def inner(a, b, c, d):
+def inner(a, b):
     ''' Inner product '''
-    return (a*c.conjugate() + b*d.conjugate()).real
+    prod = 0.0
+    for ca, cb in zip(a, b):
+        prod += (ca*cb.conjugate()).real
+    return prod
 
 def inc_proj(fu, fv, grid):
     ''' Project onto solenoidal modes '''
     return grid.pxx*fu + grid.pxy*fv, grid.pxy*fu + grid.pyy*fv
-
-def check(fu, fv, grid, pm, step, nstep):
-    u2 = inner(fu, fv, fu, fv)
-
-    uy = inverse(deriv(fu, grid.ky))
-    vx = inverse(deriv(fv, grid.kx))
-    oz = uy - vx
-
-    uk = np.array([np.sum(u2[np.where(grid.kr == ki)]) for ki in range(pm.Nx//2)])
-    Ek = 0.5 * grid.norm * uk
-
-    np.save(f'Ek/nstep{nstep}/Ek.{step:06}', Ek)    
-    np.save(f'evol/nstep{nstep}/oz.{step:06}', oz)    
-
 
 def vort(uu, vv, pm, grid):
     ''' Computes vorticity field '''
@@ -122,6 +111,20 @@ def balance(fu, fv, fx, fy, grid, pm, i_newt, step):
 
     with open(f'balance/balance{i_newt}.dat','a') as ff:
         print(f'{step*pm.dt}, {eng}, {dis}, {inj}', file=ff) 
+
+def check(fu, fv, grid, pm, step, nstep):
+    u2 = inner(fu, fv, fu, fv)
+
+    uy = inverse(deriv(fu, grid.ky))
+    vx = inverse(deriv(fv, grid.kx))
+    oz = uy - vx
+
+    uk = np.array([np.sum(u2[np.where(grid.kr == ki)]) for ki in range(pm.Nx//2)])
+    Ek = 0.5 * grid.norm * uk
+
+    np.save(f'Ek/nstep{nstep}/Ek.{step:06}', Ek)    
+    np.save(f'evol/nstep{nstep}/oz.{step:06}', oz)    
+
 
 def initial_conditions(grid, pm):
     if pm.stat == 0:

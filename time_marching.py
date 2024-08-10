@@ -13,8 +13,8 @@ from types import SimpleNamespace
 pm = json.load(open('params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 
 # Import corresponding module
-mod     = importlib.import_module(f'mods.mod_ps{pm.dim}D', package=None)
-sol_mod = importlib.import_module(f'solvers.{pm.solver}', package=None)
+mod     = importlib.import_module(f'pySPEC.mods.mod_ps{pm.dim}D', package=None)
+sol_mod = importlib.import_module(f'pySPEC.solvers.{pm.solver}', package=None)
 
 # Initialize solver
 grid   = mod.Grid(pm)
@@ -24,4 +24,4 @@ solver = getattr(sol_mod, pm.solver)(grid, pm)
 fields = mod.initial_conditions(grid, pm)
 
 # Evolve
-fields = solver.evolve(fields, pm.T)
+fields = solver.evolve(fields, pm.T, bstep=pm.bstep)

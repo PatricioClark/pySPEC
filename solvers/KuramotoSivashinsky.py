@@ -44,3 +44,7 @@ class KuramotoSivashinsky(Solver):
             self.write_outputs(fields, step, bstep, sstep, fstep)
 
         return [fu]
+
+    def balance(self, fields, step):
+        eng = mod.energy(fields, self.grid)
+        return [f'{self.pm.dt*step:.4e}', f'{eng:.6e}']

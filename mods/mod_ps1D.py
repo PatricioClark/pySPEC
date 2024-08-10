@@ -42,6 +42,18 @@ def avg(ui, grid):
     ''' Mean in Fourier space '''
     return grid.norm * np.sum(ui)
 
+def inner(a, b):
+    ''' Inner product '''
+    prod = 0.0
+    for ca, cb in zip(a, b):
+        prod += (ca*cb.conjugate()).real
+    return prod
+
+def energy(fields, grid):
+    u2  = inner(fields, fields)
+    eng = 0.5*avg(u2, grid)
+    return eng
+
 def initial_conditions(grid, pm):
     if pm.stat == 0:
         # Initial conditions
