@@ -74,7 +74,7 @@ class KolmogorovFlow(Solver):
         self.kf = kf
         self.fx = np.sin(2*np.pi*kf*self.grid.yy/pm.Ly)
         self.fx = ps.forward(self.fx)
-        self.fy = np.zeros((pm.Nx, pm.Nx), dtype=complex)
+        self.fy = np.zeros_like(self.fx, dtype=complex)
         self.fx, self.fy = ps.inc_proj2D(self.fx, self.fy, self.grid)
 
     def rkstep(self, fields, prev, oo):

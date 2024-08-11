@@ -33,12 +33,12 @@ class Grid2D:
     def __init__(self, pm):
         xi, dx = np.linspace(0, pm.Lx, pm.Nx, endpoint=False, retstep=True)
         yi, dy = np.linspace(0, pm.Ly, pm.Ny, endpoint=False, retstep=True)
-        xx, yy = np.meshgrid(xi, yi) #should add indexing = 'ij' if Nx and Ny are different for clarity
-        tt, dt = np.linspace(0, pm.T, pm.Nt, endpoint=False, retstep=True)
+        xx, yy = np.meshgrid(xi, yi, indexing='ij')
+        tt     = np.arange(0, pm.T, pm.dt)
 
         kx = np.fft.fftfreq(pm.Nx, dx) 
-        ky = np.fft.fftfreq(pm.Ny, dy) 
-        kx, ky = np.meshgrid(kx, ky)
+        ky = np.fft.rfftfreq(pm.Ny, dy) 
+        kx, ky = np.meshgrid(kx, ky, indexing='ij')
         k2 = kx**2 + ky**2
         kk = np.sqrt(k2)
         kr = np.round(kk)
@@ -48,7 +48,7 @@ class Grid2D:
         self.yy = yy
         self.dy = dy
         self.tt = tt
-        self.dt = dt
+        self.dt = pm.dt
 
         self.kx = kx
         self.ky = ky
