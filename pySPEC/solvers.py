@@ -7,7 +7,7 @@ They must all return the fields in Fourier space.
 import abc
 import numpy as np
 
-import pseudo as ps
+from . import pseudo as ps
 
 class Solver(abc.ABC):
     def __init__(self, pm):

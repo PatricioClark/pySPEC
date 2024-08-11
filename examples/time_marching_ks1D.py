@@ -12,11 +12,11 @@ import matplotlib.pyplot as plt
 from types import SimpleNamespace
 
 # Parse JSON into an object with attributes corresponding to dict keys.
-pm = json.load(open('params_time_marching.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
+pm = json.load(open('params_time_marching_ks1D.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 
 # Import corresponding module
-import pseudo as ps
-from solvers import KuramotoSivashinsky
+import pySPEC.pseudo as ps
+from pySPEC.solvers import KuramotoSivashinsky
 
 # Initialize solver
 grid   = ps.Grid1D(pm)
