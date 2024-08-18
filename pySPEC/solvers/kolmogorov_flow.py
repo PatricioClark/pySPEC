@@ -16,8 +16,8 @@ class KolmogorovFlow(Solver):
     decomposition of the NS equations and the pressure proyector.
     '''
     def __init__(self, pm, kf=4):
-        self.grid = ps.Grid2D(pm)
-        self.pm = pm
+        pm.dim = 2
+        super().__init__(pm)
 
         # Forcing
         self.kf = kf
@@ -65,4 +65,25 @@ class KolmogorovFlow(Solver):
         fv[self.grid.dealias_modes] = 0.0
 
         return [fu, fv]
+
+    def flatten_fields(self, fields):
+        ''' Transforms uu, vv, to a 1d variable X (if vort saves oz)'''
+        uu, vv = fields
+        if not (self.pm.vort_X or self.pm.fvort):
+            return np.concatenate((uu.flatten(), vv.flatten()))
+        else:
+            oz = vort(uu, vv, self.pm, self.grid)
+            return oz.flatten()
+
+    def unflatten_fields(self, X, pm, grid):
+        ''' Transforms 1d variable X to uu,vv '''
+        if not (pm.vort_X or pm.fvort):
+            ll = len(X)//2
+            uu = X[:ll].reshape((pm.Nx, pm.Ny))
+            vv = X[ll:].reshape((pm.Nx, pm.Ny))
+            return uu, vv
+        else:
+            oz = X.reshape((pm.Nx, pm.Ny))
+            uu, vv = inv_vort(oz, pm, grid)
+            return uu, vv
 

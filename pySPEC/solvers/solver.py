@@ -11,7 +11,7 @@ from .. import pseudo as ps
 
 class Solver(abc.ABC):
     def __init__(self, pm):
-        self.grid = ps.Grid1D(pm)
+        self.grid = ps.Grid(pm)
         self.pm = pm
 
     def evolve(self, fields, T, bstep=None, sstep=None, ostep=None):

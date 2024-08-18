@@ -8,8 +8,8 @@ from .. import pseudo as ps
 class KuramotoSivashinsky(Solver):
     ''' 1D Kuramoto Sivashinsky equation '''
     def __init__(self, pm):
-        self.grid = ps.Grid1D(pm)
-        self.pm   = pm
+        pm.dim = 1
+        super().__init__(pm)
 
     def rkstep(self, fields, prev, oo):
         # Unpack

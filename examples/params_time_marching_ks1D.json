@@ -1,9 +1,9 @@
 {
     "dim": 1,
     "solver": "KuramotoSivashinsky",
-    "L": 22.0,
-    "T": 100.0,
+    "Lx": 22.0,
     "Nx": 128,
+    "T": 100.0,
     "dt": 1e-5,
     "rkord": 2,
     "bstep": 10,
