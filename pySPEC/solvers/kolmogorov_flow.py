@@ -15,8 +15,11 @@ class KolmogorovFlow(Solver):
     See Eq. (6.143) in Pope's Turbulent flows for details on the Fourier
     decomposition of the NS equations and the pressure proyector.
     '''
+
+    num_fields = 2
+    dim_fields = 2
+
     def __init__(self, pm, kf=4):
-        pm.dim = 2
         super().__init__(pm)
 
         # Forcing

@@ -10,9 +10,31 @@ import numpy as np
 from .. import pseudo as ps
 
 class Solver(abc.ABC):
+    ''' Abstract solver class
+
+    All solvers must implement the following methods:
+        - rkstep: Runge-Kutta step
+        - balance: Energy balance
+        - spectra: Energy spectra
+        - outs: Outputs
+
+    All solvers have defined the following: 
+        - num_fields: Number of fields
+        - dim_fields: Dimension of the fields
+    '''
+    num_fields: int
+    dim_fields: int
+
     def __init__(self, pm):
-        self.grid = ps.Grid(pm)
+        ''' Initializes the solver
+
+        Parameters:
+        ----------
+            pm: parameter dictionary
+        '''
         self.pm = pm
+        self.pm.dim = self.dim_fields
+        self.grid = ps.Grid(pm)
 
     def evolve(self, fields, T, bstep=None, sstep=None, ostep=None):
         ''' Evolves velocity fields to time T '''

@@ -7,8 +7,10 @@ from .. import pseudo as ps
 
 class KuramotoSivashinsky(Solver):
     ''' 1D Kuramoto Sivashinsky equation '''
+
+    num_fields = 1
+    dim_fields = 1
     def __init__(self, pm):
-        pm.dim = 1
         super().__init__(pm)
 
     def rkstep(self, fields, prev, oo):

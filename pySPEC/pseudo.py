@@ -4,10 +4,14 @@ class Grid:
     def __init__(self, pm):
         xx, dx = np.linspace(0, pm.Lx, pm.Nx, endpoint=False, retstep=True)
         tt     = np.arange(0, pm.T, pm.dt)
+
         if pm.dim == 2:
             xi, dx = np.linspace(0, pm.Lx, pm.Nx, endpoint=False, retstep=True)
             yi, dy = np.linspace(0, pm.Ly, pm.Ny, endpoint=False, retstep=True)
             xx, yy = np.meshgrid(xi, yi, indexing='ij')
+        else:
+            dy = 0.0
+            yy = None
 
         ki = np.fft.rfftfreq(pm.Nx, 1/pm.Nx) 
         kx = 2.0*np.pi*np.fft.rfftfreq(pm.Nx, dx) 
@@ -15,6 +19,8 @@ class Grid:
         if pm.dim == 2:
             ky = 2.0*np.pi*np.fft.rfftfreq(pm.Ny, dy)
             k2 = k2 + ky**2
+        else:
+            ky = 0.0
         kk = np.sqrt(k2)
         kr = np.round(kk)
 
@@ -36,6 +42,7 @@ class Grid:
         self.norm = 1.0/(pm.Nx**2)
         self.zero_mode = 0
         self.dealias_modes = (ki > pm.Nx/3)
+
         if pm.dim == 2:
             self.zero_mode = (0, 0)
             self.dealias_modes = (kk > pm.Nx/3)
