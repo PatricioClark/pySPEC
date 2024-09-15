@@ -2,11 +2,11 @@
 
 import numpy as np
 
-from .solver import Solver
+from .pseudospectral import PseudoSpectral
 from .. import pseudo as ps
 
 
-class KolmogorovFlow(Solver):
+class KolmogorovFlow(PseudoSpectral):
     '''
     Kolmogorov flow: 2D Navier-Stokes with fx = sin(2*pi*kf*y/Ly) forcing.
 

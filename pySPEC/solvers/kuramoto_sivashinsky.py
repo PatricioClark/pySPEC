@@ -2,10 +2,10 @@
 
 import numpy as np
 
-from .solver import Solver
+from .pseudospectral import PseudoSpectral
 from .. import pseudo as ps
 
-class KuramotoSivashinsky(Solver):
+class KuramotoSivashinsky(PseudoSpectral):
     ''' 1D Kuramoto Sivashinsky equation '''
 
     num_fields = 1

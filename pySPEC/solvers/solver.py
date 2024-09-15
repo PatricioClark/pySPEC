@@ -36,25 +36,8 @@ class Solver(abc.ABC):
         self.pm.dim = self.dim_fields
         self.grid = ps.Grid(pm)
 
-    def evolve(self, fields, T, bstep=None, sstep=None, ostep=None):
-        ''' Evolves velocity fields to time T '''
-
-        Nt = round(T/self.pm.dt)
-        for step in range(Nt):
-            # Store previous time step
-            prev = np.copy(fields)
-
-            # Time integration
-            for oo in range(self.pm.rkord, 0, -1):
-                fields = self.rkstep(fields, prev, oo)
-
-            # Write outputs
-            self.write_outputs(fields, step, bstep, sstep, ostep)
-
-        return fields
-
     @abc.abstractmethod
-    def rkstep(self, fields, prev, oo):
+    def evolve(self, fields, T, bstep=None, sstep=None, ostep=None):
         return []
 
     def balance(self, fields, step):
