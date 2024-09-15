@@ -12,14 +12,16 @@ class KuramotoSivashinsky(PseudoSpectral):
     dim_fields = 1
     def __init__(self, pm):
         super().__init__(pm)
+        self.grid = ps.Grid1D(pm)
 
     def rkstep(self, fields, prev, oo):
         # Unpack
         fu  = fields[0]
         fup = prev[0]
+
         # Non-linear term
-        uu  = ps.inverse(fu)
-        fu2 = ps.forward(uu**2)
+        uu  = self.grid.inverse(fu)
+        fu2 = self.grid.forward(uu**2)
 
         fu = fup + (self.grid.dt/oo) * (
             - (0.5*1.0j*self.grid.kx*fu2)
@@ -34,5 +36,5 @@ class KuramotoSivashinsky(PseudoSpectral):
         return [fu]
 
     def outs(self, fields, step):
-        uu = ps.inverse(fields[0])
+        uu = self.grid.inverse(fields[0])
         np.save(f'uu_{step:04}', uu)

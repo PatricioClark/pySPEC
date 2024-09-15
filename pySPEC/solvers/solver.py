@@ -13,7 +13,7 @@ class Solver(abc.ABC):
     ''' Abstract solver class
 
     All solvers must implement the following methods:
-        - rkstep: Runge-Kutta step
+        - evolve: Evolve solver method
         - balance: Energy balance
         - spectra: Energy spectra
         - outs: Outputs
@@ -34,14 +34,14 @@ class Solver(abc.ABC):
         '''
         self.pm = pm
         self.pm.dim = self.dim_fields
-        self.grid = ps.Grid(pm)
+        self.grid: ps.Grid1D | ps.Grid2D
 
     @abc.abstractmethod
     def evolve(self, fields, T, bstep=None, sstep=None, ostep=None):
         return []
 
     def balance(self, fields, step):
-        eng = ps.energy(fields, self.grid)
+        eng = self.grid.energy(fields)
         return [f'{self.pm.dt*step:.4e}', f'{eng:.6e}']
 
     def spectra(self, fields, step):

@@ -21,13 +21,14 @@ class KolmogorovFlow(PseudoSpectral):
 
     def __init__(self, pm, kf=4):
         super().__init__(pm)
+        self.grid = ps.Grid2D(pm)
 
         # Forcing
         self.kf = kf
         self.fx = np.sin(2*np.pi*kf*self.grid.yy/pm.Ly)
-        self.fx = ps.forward(self.fx)
+        self.fx = self.grid.forward(self.fx)
         self.fy = np.zeros_like(self.fx, dtype=complex)
-        self.fx, self.fy = ps.inc_proj2D(self.fx, self.fy, self.grid)
+        self.fx, self.fy = self.grid.inc_proj2D([self.fx, self.fy])
 
     def rkstep(self, fields, prev, oo):
         # Unpack
@@ -35,18 +36,18 @@ class KolmogorovFlow(PseudoSpectral):
         fup, fvp = prev
 
         # Non-linear term
-        uu = ps.inverse(fu)
-        vv = ps.inverse(fv)
+        uu = self.grid.inverse(fu)
+        vv = self.grid.inverse(fv)
         
-        ux = ps.inverse(ps.deriv(fu, self.grid.kx))
-        uy = ps.inverse(ps.deriv(fu, self.grid.ky))
+        ux = self.grid.inverse(self.grid.deriv(fu, self.grid.kx))
+        uy = self.grid.inverse(self.grid.deriv(fu, self.grid.ky))
 
-        vx = ps.inverse(ps.deriv(fv, self.grid.kx))
-        vy = ps.inverse(ps.deriv(fv, self.grid.ky))
+        vx = self.grid.inverse(self.grid.deriv(fv, self.grid.kx))
+        vy = self.grid.inverse(self.grid.deriv(fv, self.grid.ky))
 
-        gx = ps.forward(uu*ux + vv*uy)
-        gy = ps.forward(uu*vx + vv*vy)
-        gx, gy = ps.inc_proj2D(gx, gy, self.grid)
+        gx = self.grid.forward(uu*ux + vv*uy)
+        gy = self.grid.forward(uu*vx + vv*vy)
+        gx, gy = self.grid.inc_proj2D(gx, gy, self.grid)
 
         # Equations
         fu = fup + (self.grid.dt/oo) * (

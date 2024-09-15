@@ -19,7 +19,7 @@ import pySPEC.pseudo as ps
 from pySPEC.solvers import KuramotoSivashinsky
 
 # Initialize solver
-grid   = ps.Grid(pm)
+grid   = ps.Grid1D(pm)
 solver = KuramotoSivashinsky(pm)
 
 # Initial conditions
@@ -27,7 +27,7 @@ uu = (0.3*np.cos(2*np.pi*3.0*grid.xx/pm.Lx) +
       0.4*np.cos(2*np.pi*5.0*grid.xx/pm.Lx) +
       0.5*np.cos(2*np.pi*4.0*grid.xx/pm.Lx) 
       )
-fields = [ps.forward(uu)]
+fields = [grid.forward(uu)]
 
 # Evolve
 fields = solver.evolve(fields, pm.T, bstep=pm.bstep, ostep=10000)
