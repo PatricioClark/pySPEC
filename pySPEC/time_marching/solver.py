@@ -1,9 +1,3 @@
-'''
-Collection of different solvers.
-
-They must all return the fields in Fourier space.
-'''
-
 import abc
 import numpy as np
 
@@ -41,8 +35,7 @@ class Solver(abc.ABC):
         return []
 
     def balance(self, fields, step):
-        eng = self.grid.energy(fields)
-        return [f'{self.pm.dt*step:.4e}', f'{eng:.6e}']
+        return []
 
     def spectra(self, fields, step):
         pass

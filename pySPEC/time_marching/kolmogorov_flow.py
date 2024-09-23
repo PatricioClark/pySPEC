@@ -28,7 +28,7 @@ class KolmogorovFlow(PseudoSpectral):
         self.fx = np.sin(2*np.pi*kf*self.grid.yy/pm.Ly)
         self.fx = self.grid.forward(self.fx)
         self.fy = np.zeros_like(self.fx, dtype=complex)
-        self.fx, self.fy = self.grid.inc_proj2D([self.fx, self.fy])
+        self.fx, self.fy = self.grid.inc_proj([self.fx, self.fy])
 
     def rkstep(self, fields, prev, oo):
         # Unpack
@@ -47,7 +47,7 @@ class KolmogorovFlow(PseudoSpectral):
 
         gx = self.grid.forward(uu*ux + vv*uy)
         gy = self.grid.forward(uu*vx + vv*vy)
-        gx, gy = self.grid.inc_proj2D(gx, gy, self.grid)
+        gx, gy = self.grid.inc_proj([gx, gy])
 
         # Equations
         fu = fup + (self.grid.dt/oo) * (
@@ -70,24 +70,24 @@ class KolmogorovFlow(PseudoSpectral):
 
         return [fu, fv]
 
-    def flatten_fields(self, fields):
-        ''' Transforms uu, vv, to a 1d variable X (if vort saves oz)'''
-        uu, vv = fields
-        if not (self.pm.vort_X or self.pm.fvort):
-            return np.concatenate((uu.flatten(), vv.flatten()))
-        else:
-            oz = vort(uu, vv, self.pm, self.grid)
-            return oz.flatten()
-
-    def unflatten_fields(self, X, pm, grid):
-        ''' Transforms 1d variable X to uu,vv '''
-        if not (pm.vort_X or pm.fvort):
-            ll = len(X)//2
-            uu = X[:ll].reshape((pm.Nx, pm.Ny))
-            vv = X[ll:].reshape((pm.Nx, pm.Ny))
-            return uu, vv
-        else:
-            oz = X.reshape((pm.Nx, pm.Ny))
-            uu, vv = inv_vort(oz, pm, grid)
-            return uu, vv
-
+    # def flatten_fields(self, fields):
+    #     ''' Transforms uu, vv, to a 1d variable X (if vort saves oz)'''
+    #     uu, vv = fields
+    #     if not (self.pm.vort_X or self.pm.fvort):
+    #         return np.concatenate((uu.flatten(), vv.flatten()))
+    #     else:
+    #         oz = vort(uu, vv, self.pm, self.grid)
+    #         return oz.flatten()
+    #
+    # def unflatten_fields(self, X, pm, grid):
+    #     ''' Transforms 1d variable X to uu,vv '''
+    #     if not (pm.vort_X or pm.fvort):
+    #         ll = len(X)//2
+    #         uu = X[:ll].reshape((pm.Nx, pm.Ny))
+    #         vv = X[ll:].reshape((pm.Nx, pm.Ny))
+    #         return uu, vv
+    #     else:
+    #         oz = X.reshape((pm.Nx, pm.Ny))
+    #         uu, vv = inv_vort(oz, pm, grid)
+    #         return uu, vv
+    #

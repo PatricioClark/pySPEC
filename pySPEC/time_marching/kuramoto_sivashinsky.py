@@ -38,3 +38,7 @@ class KuramotoSivashinsky(PseudoSpectral):
     def outs(self, fields, step):
         uu = self.grid.inverse(fields[0])
         np.save(f'uu_{step:04}', uu)
+
+    def balance(self, fields, step):
+        eng = self.grid.energy(fields)
+        return [f'{self.pm.dt*step:.4e}', f'{eng:.6e}']

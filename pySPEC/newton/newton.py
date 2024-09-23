@@ -21,17 +21,22 @@ class NewtonSolver(abc.ABC):
         self.solver = solver
         self.grid = solver.grid
 
-    def iterate(self, fields, trust_region='hook'):'
-        for i_newt in range(pm.restart+1, pm.N_newt):    
+    def iterate(self, fields, trust_region='hook'):
+        for i_newt in range(self.pm.restart+1, self.pm.N_newt):    
 
-            #write to txts
-            mod.write_prints(i_newt, b_norm, X, sx, T)
+            # Write to txts
+            # mod.write_prints(i_newt, b_norm, X, sx, T)
             
-            #calculate A matrix for newton iteration
-            apply_A = mod.application_function(evolve, inf_trans, translation, pm, X, T, Y, sx, i_newt)
+            # Calculate A matrix for newton iteration
+            apply_A = mod.application_function(solver.evolve,
+                                               inf_trans,
+                                               translation,
+                                               pm, X, T, Y, sx,
+                                               i_newt)
             self.update_A()
 
-            H, beta, Q, k = GMRES(self.apply_A, b, i_newt, pm) #Perform GMRes iteration with A and RHS b
+            # Perform GMRes iteration with A and RHS b
+            H, beta, Q, k = GMRES(self.apply_A, b, i_newt, self.pm)
 
             if trust_region == 'hook':
                 X, Y, sx, T, b = hookstep(H, beta, Q, k, X, sx, T, b, i_newt)
@@ -46,6 +51,9 @@ class NewtonSolver(abc.ABC):
             mod.save_X(X, f'{i_newt}', pm, grid)
             mod.save_X(Y, f'{i_newt}_T', pm, grid)
 
-            if b_norm < pm.tol_newt:
+            if b_norm < self.pm.tol_newt:
                 break
 
+    @abc.abstractmethod
+    def update_A(self):
+        pass

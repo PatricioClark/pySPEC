@@ -92,7 +92,7 @@ class Grid2D(Grid1D):
             self.pyy = np.nan_to_num(1.0 - self.ky**2/k2)
             self.pxy = np.nan_to_num(- self.kx*self.ky/k2)
 
-    def inc_proj2D(self, fields):
+    def inc_proj(self, fields):
         ''' Project onto solenoidal modes '''
         fu = fields[0]
         fv = fields[1]

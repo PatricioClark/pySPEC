@@ -1,8 +1,5 @@
 '''
-Pseudo-spectral solver for the 1- and 2-D periodic PDEs
-
-A variable-order RK scheme is used for time integrationa
-and the 2/3 rule is used for dealiasing.
+Pseudo-spectral solver for the 1D Kuramoto-Sivashinsky equation
 '''
 
 import json
@@ -27,10 +24,10 @@ uu = (0.3*np.cos(2*np.pi*3.0*grid.xx/pm.Lx) +
       0.4*np.cos(2*np.pi*5.0*grid.xx/pm.Lx) +
       0.5*np.cos(2*np.pi*4.0*grid.xx/pm.Lx) 
       )
-fields = [grid.forward(uu)]
+fields = [uu]
 
 # Evolve
-fields = solver.evolve(fields, pm.T, bstep=pm.bstep, ostep=10000)
+fields = solver.evolve(fields, pm.T, bstep=pm.bstep, ostep=pm.ostep)
 
 # Plot Balance
 bal = np.loadtxt('balance.dat', unpack=True)
@@ -38,10 +35,8 @@ plt.plot(bal[0], bal[1])
 
 # Plot fields
 acc = []
-for ostep in range(0,int(100*pm.T/pm.dt)):
-    if ostep > 99999:
-        break
-    out = np.load(f'uu_{ostep*100:04}.npy')
+for ii in range(0,int(pm.T/pm.dt), pm.ostep):
+    out = np.load(f'uu_{ii:04}.npy')
     acc.append(out)
 
 acc = np.array(acc)

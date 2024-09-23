@@ -1,9 +1,3 @@
-'''
-Collection of different solvers.
-
-They must all return the fields in Fourier space.
-'''
-
 import abc
 import numpy as np
 
@@ -25,6 +19,9 @@ class PseudoSpectral(Solver, abc.ABC):
     def evolve(self, fields, T, bstep=None, sstep=None, ostep=None):
         ''' Evolves velocity fields to time T '''
 
+        # Forward transform
+        fields = [self.grid.forward(ff) for ff in fields]
+
         Nt = round(T/self.pm.dt)
         for step in range(Nt):
             # Store previous time step
@@ -36,6 +33,9 @@ class PseudoSpectral(Solver, abc.ABC):
 
             # Write outputs
             self.write_outputs(fields, step, bstep, sstep, ostep)
+
+        # Inverse transform
+        fields = [self.grid.inverse(ff) for ff in fields]
 
         return fields
 
