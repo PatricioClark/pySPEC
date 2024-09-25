@@ -41,4 +41,6 @@ class KuramotoSivashinsky(PseudoSpectral):
 
     def balance(self, fields, step):
         eng = self.grid.energy(fields)
-        return [f'{self.pm.dt*step:.4e}', f'{eng:.6e}']
+        bal = [f'{self.pm.dt*step:.4e}', f'{eng:.6e}']
+        with open('balance.dat', 'a') as output:
+            print(*bal, file=output)

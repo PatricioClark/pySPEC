@@ -1,3 +1,4 @@
+''' Definitions of 1- and 2-D periodic grids '''
 import numpy as np
 
 class Grid1D:

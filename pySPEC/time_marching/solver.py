@@ -35,7 +35,7 @@ class Solver(abc.ABC):
         return []
 
     def balance(self, fields, step):
-        return []
+        pass
 
     def spectra(self, fields, step):
         pass
@@ -45,9 +45,7 @@ class Solver(abc.ABC):
 
     def write_outputs(self, fields, step, bstep, sstep, ostep):
         if bstep is not None and step%bstep==0:
-            bal = self.balance(fields, step)
-            with open('balance.dat', 'a') as output:
-                print(*bal, file=output)
+            self.balance(fields, step)
 
         if sstep is not None and step%sstep==0:
             self.spectra(fields, step)
