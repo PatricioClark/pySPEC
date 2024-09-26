@@ -3,17 +3,15 @@ Pseudo-spectral solver for the 1D Kuramoto-Sivashinsky equation
 '''
 
 import json
-
 import numpy as np
 import matplotlib.pyplot as plt
 from types import SimpleNamespace
 
-# Parse JSON into an object with attributes corresponding to dict keys.
-pm = json.load(open('params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
-
-# Import corresponding module
 import pySPEC.pseudo as ps
 from pySPEC.time_marching import KuramotoSivashinsky
+
+# Parse JSON into an object with attributes corresponding to dict keys.
+pm = json.load(open('params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 
 # Initialize solver
 grid   = ps.Grid1D(pm)

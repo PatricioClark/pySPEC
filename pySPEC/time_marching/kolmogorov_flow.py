@@ -70,6 +70,18 @@ class KolmogorovFlow(PseudoSpectral):
 
         return [fu, fv]
 
+    def outs(self, fields, step):
+        uu = self.grid.inverse(fields[0])
+        vv = self.grid.inverse(fields[1])
+        np.save(f'uu_{step:04}', uu)
+        np.save(f'vv_{step:04}', vv)
+
+    def balance(self, fields, step):
+        eng = self.grid.energy(fields)
+        bal = [f'{self.pm.dt*step:.4e}', f'{eng:.6e}']
+        with open('balance.dat', 'a') as output:
+            print(*bal, file=output)
+
     # def flatten_fields(self, fields):
     #     ''' Transforms uu, vv, to a 1d variable X (if vort saves oz)'''
     #     uu, vv = fields
