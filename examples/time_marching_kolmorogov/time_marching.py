@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from types import SimpleNamespace
 
-import pySPEC.pseudo as ps
+import pySPEC as ps
 from pySPEC.time_marching import KolmogorovFlow
 
 # Parse JSON into an object with attributes corresponding to dict keys.
