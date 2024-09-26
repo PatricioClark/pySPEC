@@ -14,7 +14,7 @@ class Solver(abc.ABC):
 
     All solvers have defined the following: 
         - num_fields: Number of fields
-        - dim_fields: Dimension of the fields
+        - dim_fields: Spatial dimension of the fields
     '''
     num_fields: int
     dim_fields: int
