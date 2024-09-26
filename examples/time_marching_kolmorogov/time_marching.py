@@ -6,27 +6,32 @@ and the 2/3 rule is used for dealiasing.
 '''
 
 import json
-
 import numpy as np
 import matplotlib.pyplot as plt
 from types import SimpleNamespace
 
-# Parse JSON into an object with attributes corresponding to dict keys.
-pm = json.load(open('params_time_marching_kolm.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
-pm.Lx = 1.0
-pm.Ly = 1.0
-pm.nu = 1.0/40.0
+import pySPEC as ps
+from pySPEC.time_marching import KolmogorovFlow
 
-# Import corresponding module
-import pseudo as ps
-from solvers import KolmogorovFlow
+# Parse JSON into an object with attributes corresponding to dict keys.
+pm = json.load(open('params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
+pm.Lx = 2*np.pi*pm.L
+pm.Ly = 2*np.pi*pm.L
+pm.nu = 1.0/40.0
 
 # Initialize solver
 grid   = ps.Grid2D(pm)
 solver = KolmogorovFlow(pm)
 
 # Initial conditions
-fields = ps.initial_conditions2D(grid, pm)
+uu = np.cos(2*np.pi*1.0*grid.yy/pm.Lx) + 0.1*np.sin(2*np.pi*2.0*grid.yy/pm.Lx)
+vv = np.cos(2*np.pi*1.0*grid.xx/pm.Lx) + 0.2*np.cos(3*np.pi*2.0*grid.yy/pm.Lx)
+fu = grid.forward(uu)
+fv = grid.forward(vv)
+fu, fv = grid.inc_proj([fu, fv])
+uu = grid.inverse(fu)
+vv = grid.inverse(fv)
+fields = [uu, vv]
 
 # Evolve
 fields = solver.evolve(fields, pm.T, bstep=pm.bstep)
@@ -36,9 +41,7 @@ bal = np.loadtxt('balance.dat', unpack=True)
 plt.plot(bal[0], bal[1])
 
 # Plot fields
-fu, fv = fields
-uu = ps.inverse(fu)
-vv = ps.inverse(fv)
+uu, vv = fields
 u2 = uu**2 + vv**2
 plt.figure()
 plt.imshow(u2)

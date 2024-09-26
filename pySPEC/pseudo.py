@@ -6,11 +6,10 @@ class Grid1D:
         xx, dx = np.linspace(0, pm.Lx, pm.Nx, endpoint=False, retstep=True)
         tt     = np.arange(0, pm.T, pm.dt)
 
-        ki = np.fft.rfftfreq(pm.Nx, 1/pm.Nx) 
+        ki = np.fft.rfftfreq(pm.Nx, 1/pm.Nx).astype(int)
         kx = 2.0*np.pi*np.fft.rfftfreq(pm.Nx, dx) 
         k2 = kx**2
         kk = np.sqrt(k2)
-        kr = np.round(kk)
 
         self.xx = xx
         self.dx = dx
@@ -20,13 +19,12 @@ class Grid1D:
         self.kx = kx
         self.k2 = k2
         self.kk = kk
-        self.kr = kr
-        self.ki = ki
+        self.kr = ki
 
         # Norm and de-aliasing
         self.norm = 1.0/(pm.Nx**2)
         self.zero_mode = 0
-        self.dealias_modes = (ki > pm.Nx/3)
+        self.dealias_modes = (self.kr > pm.Nx/3)
 
     @staticmethod
     def forward(ui):
@@ -68,26 +66,34 @@ class Grid2D(Grid1D):
         yi, dy = np.linspace(0, pm.Ly, pm.Ny, endpoint=False, retstep=True)
         xx, yy = np.meshgrid(xi, yi, indexing='ij')
 
+        kx = 2.0*np.pi*np.fft.fftfreq(pm.Nx, dx) 
         ky = 2.0*np.pi*np.fft.rfftfreq(pm.Ny, dy)
-        k2 = self.kx**2 + ky**2
+        kx, ky = np.meshgrid(kx, ky, indexing='ij')
+        k2 = kx**2 + ky**2
         kk = np.sqrt(k2)
-        kr = np.round(kk)
+
+        ki = np.fft.fftfreq(pm.Nx, 1/pm.Nx)
+        kj = np.fft.rfftfreq(pm.Ny, 1/pm.Ny)
+        ki, kj = np.meshgrid(ki, kj, indexing='ij')
+        kr = (ki/pm.Nx)**2 + (kj/pm.Ny)**2
 
         self.xx = xx
         self.yy = yy
         self.dy = dy
 
-        self.k2 = k2
+        self.kx = kx
         self.ky = ky
+        self.ki = ki
+        self.kj = kj
+        self.k2 = k2
         self.kk = kk
         self.kr = kr
 
-        # Norm and de-aliasing
+        # Norm, de-aliasing and solenoidal mode proyector
         self.norm = 1.0/(pm.Nx**2*pm.Ny**2)
         self.zero_mode = (0, 0)
-        self.dealias_modes = (kk > pm.Nx/3)
+        self.dealias_modes = (kr > 1/9)
 
-        # Solenoidal mode proyector
         with np.errstate(divide='ignore', invalid='ignore'):
             self.pxx = np.nan_to_num(1.0 - self.kx**2/k2)
             self.pyy = np.nan_to_num(1.0 - self.ky**2/k2)
