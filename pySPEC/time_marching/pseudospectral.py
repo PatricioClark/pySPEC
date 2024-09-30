@@ -28,7 +28,7 @@ class PseudoSpectral(Solver, abc.ABC):
             prev = np.copy(fields)
 
             # Time integration
-            for oo in range(self.pm.rkord, 0, -1):
+            for oo in range(self.pm.rkord, 0, -1): # example: rkord = 2 gives [2,1]
                 fields = self.rkstep(fields, prev, oo)
 
             # Write outputs

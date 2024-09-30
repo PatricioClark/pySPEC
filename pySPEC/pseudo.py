@@ -33,7 +33,7 @@ class Grid1D:
 
     @staticmethod
     def inverse(ui):
-        ''' Invserse Fourier transform '''
+        ''' Inverse Fourier transform '''
         return np.fft.irfftn(ui).real
 
     @staticmethod

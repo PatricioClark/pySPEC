@@ -6,9 +6,14 @@ from .pseudospectral import PseudoSpectral
 from .. import pseudo as ps
 
 class SWHD_1D(PseudoSpectral):
-    ''' 1D Shallow Water Equations '''
+    ''' 1D Shallow Water Equations 
+        ut + u ux + g hx = 0
+        ht + ( u(h-hb) )x = 0
+    where u,h are velocity and height fields,
+    and hb is bottom topography condition.
+    '''
 
-    num_fields = 3
+    num_fields = 2
     dim_fields = 1
     def __init__(self, pm):
         super().__init__(pm)
@@ -24,19 +29,23 @@ class SWHD_1D(PseudoSpectral):
         fh  = fields[1]
         fhp = prev[1]
 
+        hb = self.hb # real function
+
         # Non-linear term
-        uu  = self.grid.inverse(fu)
-        fu2 = self.grid.forward(uu**2)
+        uu = self.grid.inverse(fu)
+        hh = self.grid.inverse(fh)
 
-        fu = fup + (self.grid.dt/oo) * (
-            - (0.5*1.0j*self.grid.kx*fu2)
-            - pm.nu*(self.grid.k2)*fu 
-            - 1.0j*self.grid.kx*fh
-            )
+        ux = self.grid.inverse(self.grid.deriv(fu, self.grid.kx))
 
-        fh = fhp + (self.grid.dt/oo) * (
-            # - (0.5*1.0j*self.grid.kx*fu2)
-            )
+        hx = self.grid.deriv(fh, self.grid.kx) # i k_i fh_i
+
+        u_ux = self.grid.forward(uu*ux)
+
+        u_h_hb_x = self.grid.deriv(uu*(hh-hb)) # i k_i f(uu*(hh-hb))_i
+
+        fu = fup - (self.grid.dt/oo) * (u_ux +  g*hx)
+        fh = fhp - (self.grid.dt/oo) * (u_h_hb_x)
+
 
         # de-aliasing
         fu[self.grid.zero_mode] = 0.0 
@@ -49,6 +58,8 @@ class SWHD_1D(PseudoSpectral):
     def outs(self, fields, step):
         uu = self.grid.inverse(fields[0])
         np.save(f'uu_{step:04}', uu)
+        hh = self.grid.inverse(fields[1])
+        np.save(f'hh_{step:04}', hh)
 
     def balance(self, fields, step):
         eng = self.grid.energy(fields)
