@@ -8,19 +8,20 @@ import matplotlib.pyplot as plt
 from types import SimpleNamespace
 
 import pySPEC as ps
-from pySPEC.time_marching import swhd_1d
+from pySPEC.time_marching import SWHD_1D
 
+param_path = 'examples/time_marching_swhd1D'
 # Parse JSON into an object with attributes corresponding to dict keys.
-pm = json.load(open('params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
+pm = json.load(open(f'{param_path}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 
 # Initialize solver
 grid   = ps.Grid1D(pm)
-solver = swhd_1d(pm)
+solver = SWHD_1D(pm)
 
 # Initial conditions
-uu = (0.3*np.cos(2*np.pi*3.0*grid.xx/pm.Lx) +
-      0.4*np.cos(2*np.pi*5.0*grid.xx/pm.Lx) +
-      0.5*np.cos(2*np.pi*4.0*grid.xx/pm.Lx) 
+uu = (0.05*np.cos(2*np.pi*3.0*grid.xx/pm.Lx)
+      )
+hh = pm.h0 + (0.05*np.cos(2*np.pi*3.0*grid.xx/pm.Lx)
       )
 fields = [uu, hh]
 
@@ -28,24 +29,18 @@ fields = [uu, hh]
 fields = solver.evolve(fields, pm.T, bstep=pm.bstep, ostep=pm.ostep)
 
 # Plot Balance
-bal = np.loadtxt('balance.dat', unpack=True)
-plt.plot(bal[0], bal[1])
-
+bal = np.loadtxt(f'{pm.out_path}/balance.dat', unpack=True)
 # Plot fields
-acc_u = []
-acc_h = []
-for ii in range(0,int(pm.T/pm.dt), pm.ostep):
-    out = np.load(f'uu_{ii:04}.npy')
-    acc_u.append(out)
-    out = np.load(f'hh_{ii:04}.npy')
-    acc_h.append(out)
+val = 2*pm.ostep
+out_u = np.load(f'{pm.out_path}/uu_{val:04}.npy')
+out_h = np.load(f'{pm.out_path}/hh_{val:04}.npy')
 
-acc_u = np.array(acc_u)
-plt.figure()
-plt.imshow(acc_u, extent=[0,22,0,100])
-plt.show()
+f,axs = plt.subplots(ncols=3)
 
-acc_h = np.array(acc_h)
-plt.figure()
-plt.imshow(acc_h, extent=[0,22,0,100])
-plt.show()
+axs[0].plot(bal[0], bal[1] , label = 'balance')
+axs[0].legend()
+axs[1].plot(out_u , label = 'u')
+axs[1].legend()
+axs[2].plot(out_h , label = 'h')
+axs[2].legend()
+plt.savefig(f'{pm.out_path}/fields.png')

@@ -7,7 +7,7 @@ class Grid1D:
         tt     = np.arange(0, pm.T, pm.dt)
 
         ki = np.fft.rfftfreq(pm.Nx, 1/pm.Nx).astype(int)
-        kx = 2.0*np.pi*np.fft.rfftfreq(pm.Nx, dx) 
+        kx = 2.0*np.pi*np.fft.rfftfreq(pm.Nx, dx)
         k2 = kx**2
         kk = np.sqrt(k2)
 
@@ -66,7 +66,7 @@ class Grid2D(Grid1D):
         yi, dy = np.linspace(0, pm.Ly, pm.Ny, endpoint=False, retstep=True)
         xx, yy = np.meshgrid(xi, yi, indexing='ij')
 
-        kx = 2.0*np.pi*np.fft.fftfreq(pm.Nx, dx) 
+        kx = 2.0*np.pi*np.fft.fftfreq(pm.Nx, dx)
         ky = 2.0*np.pi*np.fft.rfftfreq(pm.Ny, dy)
         kx, ky = np.meshgrid(kx, ky, indexing='ij')
         k2 = kx**2 + ky**2

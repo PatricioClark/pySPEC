@@ -2,3 +2,4 @@ output
 figures
 params.json
 **/__pycache__/
+outs/

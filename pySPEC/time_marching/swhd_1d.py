@@ -6,7 +6,7 @@ from .pseudospectral import PseudoSpectral
 from .. import pseudo as ps
 
 class SWHD_1D(PseudoSpectral):
-    ''' 1D Shallow Water Equations 
+    ''' 1D Shallow Water Equations
         ut + u ux + g hx = 0
         ht + ( u(h-hb) )x = 0
     where u,h are velocity and height fields,
@@ -19,7 +19,7 @@ class SWHD_1D(PseudoSpectral):
         super().__init__(pm)
         self.grid = ps.Grid1D(pm)
 
-        self.hb = ...
+        self.hb = np.zeros_like(self.grid.xx) # test flat bottom
 
     def rkstep(self, fields, prev, oo):
         # Unpack
@@ -37,32 +37,31 @@ class SWHD_1D(PseudoSpectral):
 
         ux = self.grid.inverse(self.grid.deriv(fu, self.grid.kx))
 
-        hx = self.grid.deriv(fh, self.grid.kx) # i k_i fh_i
+        fhx = self.grid.deriv(fh, self.grid.kx) # i k_i fh_i
 
-        u_ux = self.grid.forward(uu*ux)
+        fu_ux = self.grid.forward(uu*ux)
 
-        u_h_hb_x = self.grid.deriv(uu*(hh-hb)) # i k_i f(uu*(hh-hb))_i
+        fu_h_hb_x = self.grid.deriv(self.grid.forward(uu*(hh-hb)) , self.grid.kx) # i k_i f(uu*(hh-hb))_i
 
-        fu = fup - (self.grid.dt/oo) * (u_ux +  g*hx)
-        fh = fhp - (self.grid.dt/oo) * (u_h_hb_x)
-
+        fu = fup - (self.grid.dt/oo) * (fu_ux +  self.pm.g*fhx)
+        fh = fhp - (self.grid.dt/oo) * fu_h_hb_x
 
         # de-aliasing
-        fu[self.grid.zero_mode] = 0.0 
-        fu[self.grid.dealias_modes] = 0.0 
-        fh[self.grid.zero_mode] = 0.0 
-        fh[self.grid.dealias_modes] = 0.0 
+        fu[self.grid.zero_mode] = 0.0
+        fu[self.grid.dealias_modes] = 0.0
+        # fh[self.grid.zero_mode] = 0.0 # zero mode for h is not null
+        fh[self.grid.dealias_modes] = 0.0
 
         return [fu, fh]
 
     def outs(self, fields, step):
         uu = self.grid.inverse(fields[0])
-        np.save(f'uu_{step:04}', uu)
+        np.save(f'{self.pm.out_path}/uu_{step:04}', uu)
         hh = self.grid.inverse(fields[1])
-        np.save(f'hh_{step:04}', hh)
+        np.save(f'{self.pm.out_path}/hh_{step:04}', hh)
 
     def balance(self, fields, step):
         eng = self.grid.energy(fields)
         bal = [f'{self.pm.dt*step:.4e}', f'{eng:.6e}']
-        with open('balance.dat', 'a') as output:
+        with open(f'{self.pm.out_path}/balance.dat', 'a') as output:
             print(*bal, file=output)
