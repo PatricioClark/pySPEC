@@ -1,5 +1,5 @@
 '''
-Pseudo-spectral solver for the 1D Kuramoto-Sivashinsky equation
+Pseudo-spectral solver for the 1D SWHD equation
 '''
 
 import json
