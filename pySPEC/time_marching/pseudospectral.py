@@ -21,7 +21,6 @@ class PseudoSpectral(Solver, abc.ABC):
 
         # Forward transform
         fields = [self.grid.forward(ff) for ff in fields]
-
         Nt = round(T/self.pm.dt)
         for step in range(Nt):
             # Store previous time step

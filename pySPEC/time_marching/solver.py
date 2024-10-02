@@ -12,7 +12,7 @@ class Solver(abc.ABC):
         - spectra: Energy spectra
         - outs: Outputs
 
-    All solvers have defined the following: 
+    All solvers have defined the following:
         - num_fields: Number of fields
         - dim_fields: Spatial dimension of the fields
     '''
@@ -49,6 +49,6 @@ class Solver(abc.ABC):
 
         if sstep is not None and step%sstep==0:
             self.spectra(fields, step)
-            
+
         if ostep is not None and step%ostep==0:
             self.outs(fields, step)

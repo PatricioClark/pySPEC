@@ -14,6 +14,7 @@ from matplotlib.colors import LinearSegmentedColormap
 param_path = 'examples/time_marching_swhd1D'
 # Parse JSON into an object with attributes corresponding to dict keys.
 pm = json.load(open(f'{param_path}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
+pm.Lx = 2*np.pi*pm.Lx
 
 # define plot function for gifs
 def plot_time_lapse(field,
