@@ -49,7 +49,7 @@ class SWHD_1D(PseudoSpectral):
         fhb = fhb
 
         # de-aliasing
-        fu[self.grid.zero_mode] = 0.0
+        # fu[self.grid.zero_mode] = 0.0
         fu[self.grid.dealias_modes] = 0.0
         # fh[self.grid.zero_mode] = 0.0 # zero mode for h is not null
         fh[self.grid.dealias_modes] = 0.0
