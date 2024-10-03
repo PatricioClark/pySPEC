@@ -1,0 +1,17 @@
+{
+    "Lx": 1.0,
+    "Nx": 1024,
+    "T": 2,
+    "dt": 1e-4,
+    "rkord": 2,
+    "bstep": 250,
+    "ostep": 250,
+    "plot_step":250,
+    "stat": 0,
+    "g": 2,
+    "h0": 2,
+    "lgd": 1,
+    "out_path": "./adjoint/backward_swhd/outs",
+    "field_path": "./adjoint/forward_swhd/outs",
+    "data_path": "./adjoint/make_data_swhd1D/outs"
+}
