@@ -18,26 +18,15 @@ pm.Lx = 2*np.pi*pm.Lx
 # Initialize solver
 grid   = ps.Grid1D(pm)
 solver = Adjoint_SWHD_1D(pm)
-NT = ((pm.T/pm.dt) /pm.ostep - 1)
-last_time = int(NT*pm.ostep)
-
-# Initial conditions physical fields
-uu = np.load(f'{pm.field_path}/uu_{last_time:04}.npy')
-hh = np.load(f'{pm.field_path}/hh_{last_time:04}.npy')
-hb = np.load(f'{pm.field_path}/hb.npy')
-
-# Measurements
-um = np.load(f'{pm.data_path}/uu_{last_time:04}.npy') # this will be um_{t}.npy
-hm = np.load(f'{pm.data_path}/hh_{last_time:04}.npy') # hm_{t}.npy
 
 # Null initial conditions for adjoint state
-uu_ = np.zeros_like(uu)
-hh_ = np.zeros_like(hh)
+uu_ = np.zeros_like(grid.xx)
+hh_ = np.zeros_like(grid.xx)
 
-fields = [uu_, hh_, uu, hh, um, hm, hb]
+fields = [uu_, hh_]
 
 # Evolve
-fields = solver.evolve(fields, pm.T, bstep=pm.bstep, ostep=pm.ostep)
+fields = solver.evolve(fields, pm.T, pm.field_path, pm.data_path, bstep=pm.bstep, ostep=pm.ostep)
 
 # Plot Balance
 bal = np.loadtxt(f'{pm.out_path}/balance.dat', unpack=True)
@@ -45,7 +34,7 @@ bal = np.loadtxt(f'{pm.out_path}/balance.dat', unpack=True)
 val = 2*pm.ostep
 out_u = np.load(f'{pm.out_path}/adjuu_{val:04}.npy')
 out_h = np.load(f'{pm.out_path}/adjhh_{val:04}.npy')
-out_hb = np.load(f'{pm.out_path}/hb.npy')
+out_hb = np.load(f'{pm.field_path}/hb.npy')
 
 f,axs = plt.subplots(ncols=3)
 

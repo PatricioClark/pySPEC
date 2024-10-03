@@ -2,10 +2,10 @@
 
 import numpy as np
 
-from .pseudospectral import PseudoSpectral
+from .adjoint_pseudospectral import AdjPseudoSpectral
 from .. import pseudo as ps
 
-class Adjoint_SWHD_1D(PseudoSpectral):
+class Adjoint_SWHD_1D(AdjPseudoSpectral):
     ''' 1D Adjoint Shallow Water Equations
         ut_ + u ux_ + (h-hb) hx_ = 2(u-um)
         ht_ + u hx_ + g ux_  = 2(h-hm)
@@ -15,7 +15,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
     and hb is bottom topography condition.
     '''
 
-    num_fields = 7 # adoint fields u_ , h_ ; physical fields u, h ; measurements um, hm ; contour hb
+    num_fields = 2 # adoint fields u_ , h_
     dim_fields = 1
     def __init__(self, pm):
         super().__init__(pm)
@@ -23,7 +23,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
 
         # self.hb = np.zeros_like(self.grid.xx) # test flat bottom
 
-    def rkstep(self, fields, prev, oo):
+    def rkstep(self, fields, prev, oo, step, data_path, field_path):
         # Unpack
         fu_  = fields[0]
         fu_p = prev[0]
@@ -31,22 +31,24 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         fh_  = fields[1]
         fh_p = prev[1]
 
-        fu  = fields[2]
-        fup = prev[2]
+        # get physical fields and measurements from T to t0, back stepping in time
+        Nt = round(self.pm.T/self.pm.dt)
+        back_step = Nt-1 - step
+        uu = np.load(f'{field_path}/uu_{back_step:04}.npy') # u field at current time step
+        hh = np.load(f'{field_path}/hh_{back_step:04}.npy') # h field at current time step
+        hb = np.load(f'{field_path}/hb.npy') # hb field at current GD iteration
 
-        fh  = fields[3]
-        fhp = prev[3]
+        fu  = self.grid.forward(uu)
+        fh  = self.grid.forward(hh)
+        fhb = self.grid.forward(hb)
 
-        fum = fields[4] # u measurments
-        fhm = fields[5] # h measurements
-        fhb = fields[6] # bottom contour
+        fum = self.grid.forward(np.load(f'{data_path}/uu_{back_step:04}.npy')) # u measurments at current time step
+        fhm = self.grid.forward(np.load(f'{data_path}/hh_{back_step:04}.npy')) # h measurements at current time step
 
         # Non-linear term
         uu_ = self.grid.inverse(fu_)
         hh_ = self.grid.inverse(fh_)
-        uu = self.grid.inverse(fu)
-        hh = self.grid.inverse(fh)
-        hb = self.grid.inverse(fhb)
+
 
         fux_ = self.grid.deriv(fu_, self.grid.kx)
         ux_ = self.grid.inverse(fux_)
@@ -68,7 +70,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         # fh[self.grid.zero_mode] = 0.0 # zero mode for h is not null
         fh[self.grid.dealias_modes] = 0.0
 
-        return [fu_,fh_, fu, fh, fum, fhm, fhb]
+        return [fu_,fh_]
 
     def outs(self, fields, step):
         uu_ = self.grid.inverse(fields[0])

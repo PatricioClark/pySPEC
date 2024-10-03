@@ -50,5 +50,5 @@ class Solver(abc.ABC):
         if sstep is not None and step%sstep==0:
             self.spectra(fields, step)
 
-        if ostep is not None and step%ostep==0:
+        if (ostep is not None and step%ostep==0) or (step == round(self.pm.T/self.pm.dt)-1): # save last step as well
             self.outs(fields, step)

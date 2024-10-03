@@ -33,7 +33,8 @@ hh = pm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2)
 s1 = 0.5
 s2 = 0.3
 s3 = 1
-hb = s1*np.exp(-(grid.xx-np.pi/s3)**2/s2**2)
+# hb = s1*np.exp(-(grid.xx-np.pi/s3)**2/s2**2) # the true hb
+hb = np.zeros_like(grid.xx) # an ansatz
 
 fields = [uu, hh, hb]
 
