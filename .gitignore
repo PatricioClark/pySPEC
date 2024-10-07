@@ -1,5 +1,9 @@
 output
 figures
 params.json
+*.png
+*.gif
+*.dat
+*.npy
 **/__pycache__/
 outs/

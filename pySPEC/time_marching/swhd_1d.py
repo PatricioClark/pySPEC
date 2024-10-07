@@ -44,12 +44,12 @@ class SWHD_1D(PseudoSpectral):
 
         fu_h_hb_x = self.grid.deriv(self.grid.forward(uu*(hh-hb)) , self.grid.kx) # i k_i f(uu*(hh-hb))_i
 
-        fu = fup - (self.grid.dt/oo) * (fu_ux +  self.pm.g*fhx)
-        fh = fhp - (self.grid.dt/oo) * fu_h_hb_x
+        fu = fup + (self.grid.dt/oo) * (-fu_ux -  self.pm.g*fhx)
+        fh = fhp + (self.grid.dt/oo) * (-fu_h_hb_x)
         fhb = fhb
 
         # de-aliasing
-        # fu[self.grid.zero_mode] = 0.0
+        fu[self.grid.zero_mode] = 0.0
         fu[self.grid.dealias_modes] = 0.0
         # fh[self.grid.zero_mode] = 0.0 # zero mode for h is not null
         fh[self.grid.dealias_modes] = 0.0
