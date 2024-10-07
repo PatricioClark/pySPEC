@@ -155,7 +155,7 @@ def balance(fu, fv, fx, fy, grid, pm, i_newt, step):
 def evolution_function(grid, pm):
     # Forcing
     kf = 4
-    fx = np.sin(2*np.pi*kf*grid.yy/pm.Lx)
+    fx = np.sin(2*np.pi*kf*grid.yy/pm.Lx) #debería ser pm.Ly, pero son iguales
     fx = forward(fx)
     fy = np.zeros((pm.Nx, pm.Nx), dtype=complex)
     fx, fy = inc_proj(fx, fy, grid)
@@ -166,12 +166,13 @@ def evolution_function(grid, pm):
         fu = forward(uu)
         fv = forward(vv)
 
-        Nt = round(T/pm.dt)
+        Nt = int(T//pm.dt)
+        # Nt = round(T/pm.dt)
         if save: #save vorticity and Ek every ffreq
-            oz_t = np.empty(((Nt//pm.ffreq)+1, pm.Nx, pm.Ny))
-            Ek_t = np.empty(((Nt//pm.ffreq)+1, pm.Nx//2))
+            oz_t = np.empty(( ((Nt+1)//pm.ffreq)+1, pm.Nx, pm.Ny ))
+            Ek_t = np.empty(( ((Nt+1)//pm.ffreq)+1, pm.Nx//2 ))
 
-        for step in range(Nt):
+        for step in range(Nt+1):#Nt if no variable last step
             
             if save:
                 #save fields and Ek
@@ -184,7 +185,12 @@ def evolution_function(grid, pm):
             # Store previous time step
             fup = np.copy(fu)
             fvp = np.copy(fv)
-       
+
+            #Make exact last step
+            dt = grid.dt
+            if step == Nt:
+                dt = T - Nt*grid.dt
+
             # Time integration
             for oo in range(pm.rkord, 0, -1):
                 # Non-linear term
@@ -202,13 +208,13 @@ def evolution_function(grid, pm):
                 gx, gy = inc_proj(gx, gy, grid)
 
                 # Equations
-                fu = fup + (grid.dt/oo) * (
+                fu = fup + (dt/oo) * (
                     - gx
                     - pm.nu * grid.k2 * fu 
                     + fx
                     )
 
-                fv = fvp + (grid.dt/oo) * (
+                fv = fvp + (dt/oo) * (
                     - gy
                     - pm.nu * grid.k2 * fv 
                     + fy
@@ -224,7 +230,7 @@ def evolution_function(grid, pm):
             #save last field and Ek
             save_oz_Ek(oz_t, Ek_t, fu, fv, grid, pm, idx = -1 )
             np.save(f'evol/oz_t{i_newt}', oz_t)    
-            np.save(f'Ek/Ek_t{i_newt}', oz_t)    
+            np.save(f'Ek/Ek_t{i_newt}', Ek_t) #previous bug: had saved oz_t instead of Ek_t    
             #save last balance
             balance(fu, fv, fx, fy, grid, pm, i_newt, step = Nt)
                     
@@ -269,7 +275,7 @@ def translation_function(grid, pm):
         uu, vv = unflatten_fields(X, pm, grid)
         fu = forward(uu)
         fv = forward(vv)
-        fu = fu * np.exp(1.0j*grid.kx*s)
+        fu = fu * np.exp(1.0j*grid.kx*s) #2pi factor missing
         fv = fv * np.exp(1.0j*grid.kx*s)
 
         uu = inverse(fu)
@@ -291,8 +297,9 @@ def application_function(evolve, inf_trans, translation, pm, X, T, Y, s, i_newt)
     dX_dt = evolve(X, pm.dt) - X
     dX_dt = dX_dt/pm.dt
 
-    def apply_A(dX, ds, dT):
+    def apply_A(dX):
         ''' Applies A matrix to vector (dX,ds,dT)^t  '''        
+        dX, ds, dT = dX[:-2], dX[-2], dX[-1] #last 2 idxs correspond to ds and dT
         norm_dX = np.linalg.norm(dX)
         epsilon = 1e-7*norm_X/norm_dX
 
@@ -404,7 +411,7 @@ def write_prints(i_newt, b_norm, X, sx, T):
     open(f'prints/apply_A/iter{i_newt}.txt', 'w') as file5,\
     open(f'prints/linesearch/iter{i_newt}.txt', 'w') as file6,\
     open(f'prints/hookstep/extra_iter{i_newt}.txt', 'w') as file7:
-        file1.write(f'{i_newt-1},{round(b_norm,3)}\n')
+        file1.write(f'{i_newt-1},{b_norm}\n')
         file2.write(f'{i_newt-1},{round(T, 8)},{round(sx, 8)},{round(np.linalg.norm(X), 3)}\n')
         file3.write('iter gmres, error\n')
         file4.write('iter hookstep, |b|\n')
@@ -428,6 +435,23 @@ def mkdirs():
     for print_dir in ('error_gmres', 'hookstep','linesearch','apply_A'):
         mkdir(f'prints/{print_dir}')
 
+def get_orb_data(restart):
+    if restart:
+        #if restarting, load T, sx from solver.txt
+        solver = np.loadtxt('prints/solver.txt', delimiter = ',', skiprows = 1)
+        idx_restart = np.argwhere(solver[:,0]==restart)[0][0] #in case more than 1 restart is needed find row with last iter
+        T, sx = solver[idx_restart,1:3]
+        return T, sx
+    else:
+        #if starting new run get T, t from ginput_data_orbs file from dirname
+        wd = os.getcwd()
+        orb_n = wd.split('/')[-1][3:5]
+        orbs = np.loadtxt('../ginput_data_orbs.txt', delimiter=',', skiprows=1, comments='-', usecols = (0,1,2))
+        orb = orbs[int(orb_n)]
+        T = orb[1]
+        t = orb[2]
+        return T, t
+    
 
 #Possibility: encompass hook, ls, and no TR approach in one function:
 # def post_GMRES_function(grid, pm):

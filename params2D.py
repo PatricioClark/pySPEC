@@ -15,24 +15,17 @@ rkord = 2 # order of RK
 #Parameters for Newton-Solver
 
 #Get T,t from txt file from directory name
-import numpy as np
-import os
-wd = os.getcwd()
-orb_n = wd.split('/')[-1][3:5]
-orbs = np.loadtxt('../ginput_data_orbs.txt', delimiter=',', skiprows=1, comments='-', usecols = (0,1,2))
-orb = orbs[int(orb_n)]
-
-T_guess = orb[1]
-t_guess = orb[2]
 # T_guess = 2.15
 # t_guess = 780.8
-sx_guess = 0.
+sx = 0.
 N_newt = 200
 N_gmres = 50
 N_hook = 15
 restart = 0 # 0 if not restarting, else, last newton iteration to restart from
 tol_newt = 1e-5 #tolerance
 tol_gmres = 1e-5
+tol_eig = 1e-20
+N_eig = 250
 hook = True #if true performs hookstep
 ls = False #if true performs linesearch
 

@@ -25,22 +25,21 @@ mod.mkdirs()
 
 if pm.restart:
     #if restarting, load T, sx from solver.txt
-    solver = np.loadtxt('prints/solver.txt', delimiter = ',', skiprows = 1)
-    idx_restart = np.argwhere(solver[:,0]==pm.restart)[0][0] #in case more than 1 restart is needed find row with last iter
-    T, sx = solver[idx_restart,1:3]
-# Continue solver with last newton iteration
+    T, sx = mod.get_orb_data(pm.restart)
+    # Continue solver with last newton iteration
     f_name = f'fields_{pm.restart}'
     fields = np.load(f'output/{f_name}.npz')
 else:
-    T = pm.T_guess
-    sx = pm.sx_guess
-    if pm.t_guess<2000: #output2 contains directory with 500<t<2000
+    #if starting new run
+    T, t = mod.get_orb_data(pm.restart) #t: initial time. T: guessed period
+    sx = pm.sx # = 0 no prior info about sx
+    if t<2000: #output2 contains directory with 500<t<2000
         output = 'output2'
     else:
         output = 'output3'
 # Feed initial aproximation extracted with Kolmogorov solver
     path = '/share/data4/jcullen/pySPEC/run1/'
-    idx_guess = round(pm.t_guess*round(1/pm.dt))
+    idx_guess = round(t*round(1/pm.dt))
     f_name = f'fields_{idx_guess:07}'
     fields = np.load(f'{path}{output}/{f_name}.npz')
 
@@ -63,7 +62,7 @@ b_norm = np.linalg.norm(b)
 
 # Initialize print files
 if not pm.restart:
-    with open('prints/solver.txt', 'w') as file1, open('prints/b_error.txt', 'w') as file2:
+    with open('prints/solver.txt', 'x') as file1, open('prints/b_error.txt', 'x') as file2:
         file1.write('Iter newt, T, sx, |X|\n')
         file2.write('Iter newt,|b|\n')
 
@@ -111,8 +110,9 @@ for i_newt in range(pm.restart+1, pm.N_newt):
     mod.save_X(X, f'{i_newt}', pm, grid)
     mod.save_X(Y, f'{i_newt}_T', pm, grid)
 
-    if b_norm < pm.tol_newt:
-        break
+    # no breaking to see if error reaches macheps
+    # if b_norm < pm.tol_newt:
+    #     break
 
 ### END OF NEWTON-GMRES ###
 

@@ -1,4 +1,3 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
 from glob import glob
@@ -7,8 +6,6 @@ import matplotlib.animation as animation
 # from matplotlib import rc
 #plt.rcParams['animation.ffmpeg_path'] = r"C:\Users\joaco\ffmpeg-6.0-full_build\bin"
 # rc('animation', html='jshtml')
-
-
 
 T = 2
 dt = 1e-3
