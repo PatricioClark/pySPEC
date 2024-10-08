@@ -26,6 +26,9 @@ class PseudoSpectral(Solver, abc.ABC):
             # Store previous time step
             prev = np.copy(fields)
 
+            # Set the current step in the child class
+            self.current_step = step
+
             # Time integration
             for oo in range(self.pm.rkord, 0, -1): # example: rkord = 2 gives [2,1]
                 fields = self.rkstep(fields, prev, oo)

@@ -13,13 +13,13 @@ class SWHD_1D(PseudoSpectral):
     and hb is bottom topography condition.
     '''
 
-    num_fields = 3
+    num_fields = 2
     dim_fields = 1
     def __init__(self, pm):
         super().__init__(pm)
         self.grid = ps.Grid1D(pm)
-
-        # self.hb = np.zeros_like(self.grid.xx) # test flat bottom
+        self.iit = pm.iit
+        self.hb_path = pm.hb_path
 
     def rkstep(self, fields, prev, oo):
         # Unpack
@@ -29,12 +29,11 @@ class SWHD_1D(PseudoSpectral):
         fh  = fields[1]
         fhp = prev[1]
 
-        fhb = fields[2] # bottom contour
+        hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
 
         # Non-linear term
         uu = self.grid.inverse(fu)
         hh = self.grid.inverse(fh)
-        hb = self.grid.inverse(fhb)
 
         ux = self.grid.inverse(self.grid.deriv(fu, self.grid.kx))
 
@@ -46,7 +45,6 @@ class SWHD_1D(PseudoSpectral):
 
         fu = fup + (self.grid.dt/oo) * (-fu_ux -  self.pm.g*fhx)
         fh = fhp + (self.grid.dt/oo) * (-fu_h_hb_x)
-        fhb = fhb
 
         # de-aliasing
         fu[self.grid.zero_mode] = 0.0
@@ -54,16 +52,13 @@ class SWHD_1D(PseudoSpectral):
         # fh[self.grid.zero_mode] = 0.0 # zero mode for h is not null
         fh[self.grid.dealias_modes] = 0.0
 
-        return [fu, fh, fhb]
+        return [fu, fh]
 
     def outs(self, fields, step):
         uu = self.grid.inverse(fields[0])
         np.save(f'{self.pm.out_path}/uu_{step:04}', uu)
         hh = self.grid.inverse(fields[1])
         np.save(f'{self.pm.out_path}/hh_{step:04}', hh)
-        hb = self.grid.inverse(fields[2])
-        np.save(f'{self.pm.out_path}/hb', hb)
-
 
     def balance(self, fields, step):
         eng = self.grid.energy(fields)

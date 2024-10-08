@@ -26,6 +26,13 @@ bsolver = Adjoint_SWHD_1D(bpm)
 
 # true hb
 true_hb = np.load(f'{bpm.data_path}/hb.npy')
+# initial hb
+try:
+    hb = np.load(f'{fpm.hb_path}/hb_{fpm.iit0}.npy')
+except:
+    print('make initial flat hb for GD')
+    np.save(f'{fpm.hb_path}/hb_{fpm.iit0:00}.npy', np.zeros_like(true_hb))
+    hb = np.load(f'{fpm.hb_path}/hb_{fpm.iit0}.npy')
 
 # Initial conditions
 v1 = 0.05
@@ -39,21 +46,19 @@ c2 = 0.3927
 c3 = 2
 hh0 = fpm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2)
 
-for iit in range(20):
+for iit in range(fpm.iit0, 20):
+    # update iit
+    fpm.iit = iit
+    bpm.iit = iit
+    # catch initial conditions for foward integration
     uu = uu0
     hh = hh0
-    # hb = s1*np.exp(-(grid.xx-np.pi/s3)**2/s2**2) # the true hb
-    try:
-        hb = np.load(f'{fpm.hb_path}/hb_{iit:00}.npy') # load last ansatz
-    except:
-        hb = np.zeros_like(grid.xx) # initial ansatz
+    fields = [uu, hh]
 
-    fields = [uu, hh, hb]
-
-    # Forward Evolve
+    # Forward integration
     print(f'iit {iit} : evolving forward')
-    fsolver.evolve(fields, fpm.T, bstep=fpm.bstep, ostep=fpm.ostep) # last fu, fh, fhb
-    print(f'done forward')
+    fsolver.evolve(fields, fpm.T, bstep=fpm.bstep, ostep=fpm.ostep)
+    print(f'done forward integration')
 
     # calculate loss for new fields
     u_loss = np.sum(np.array([(np.load(f'{bpm.data_path}/uu_{tstep:04}.npy') - np.load(f'{bpm.field_path}/uu_{tstep:04}.npy'))**2 for tstep in range(0, int(fpm.T/fpm.dt), 250)]))
@@ -74,12 +79,11 @@ for iit in range(20):
     # Null initial conditions for adjoint state
     uu_ = np.zeros_like(grid.xx)
     hh_ = np.zeros_like(grid.xx)
-
     fields = [uu_, hh_]
 
-    # Backward Evolve
+    # Backward integration
     print(f'\niit {iit} : evolving backward')
-    fields = bsolver.evolve(fields, bpm.T, bpm.data_path, bpm.field_path, bstep=bpm.bstep, ostep=bpm.ostep) # last fu_, fh_
+    fields = bsolver.evolve(fields, bpm.T, bstep=bpm.bstep, ostep=bpm.ostep)
     print(f'done backward')
 
     # calculate dg/dhb = h_ * ux at t = 0 (initial time for forward pass)

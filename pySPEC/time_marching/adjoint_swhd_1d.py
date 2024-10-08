@@ -2,10 +2,10 @@
 
 import numpy as np
 
-from .adjoint_pseudospectral import AdjPseudoSpectral
+from .pseudospectral import PseudoSpectral
 from .. import pseudo as ps
 
-class Adjoint_SWHD_1D(AdjPseudoSpectral):
+class Adjoint_SWHD_1D(PseudoSpectral):
     ''' 1D Adjoint Shallow Water Equations
         ut_ + u ux_ + (h-hb) hx_ = 2(u-um)
         ht_ + u hx_ + g ux_  = 2(h-hm)
@@ -20,10 +20,12 @@ class Adjoint_SWHD_1D(AdjPseudoSpectral):
     def __init__(self, pm):
         super().__init__(pm)
         self.grid = ps.Grid1D(pm)
+        self.iit = pm.iit
+        self.data_path = pm.data_path
+        self.field_path = pm.field_path
+        self.hb_path = pm.hb_path
 
-        # self.hb = np.zeros_like(self.grid.xx) # test flat bottom
-
-    def rkstep(self, fields, prev, oo, step, data_path, field_path):
+    def rkstep(self, fields, prev, oo):
         # Unpack
         fu_  = fields[0]
         fu_p = prev[0]
@@ -31,19 +33,25 @@ class Adjoint_SWHD_1D(AdjPseudoSpectral):
         fh_  = fields[1]
         fh_p = prev[1]
 
+        # Access the step from the evolve method via the class attribute
+        step = self.current_step
+
         # get physical fields and measurements from T to t0, back stepping in time
         Nt = round(self.pm.T/self.pm.dt)
         back_step = Nt-1 - step
-        uu = np.load(f'{field_path}/uu_{back_step:04}.npy') # u field at current time step
-        hh = np.load(f'{field_path}/hh_{back_step:04}.npy') # h field at current time step
-        hb = np.load(f'{field_path}/hb.npy') # hb field at current GD iteration
+        print('step : ' , step)
+        print('backstep : ', back_step )
+        breakpoint()
+        uu = np.load(f'{self.field_path}/uu_{back_step:04}.npy') # u field at current time step
+        hh = np.load(f'{self.field_path}/hh_{back_step:04}.npy') # h field at current time step
+        hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
 
         fu  = self.grid.forward(uu)
         fh  = self.grid.forward(hh)
         fhb = self.grid.forward(hb)
 
-        fum = self.grid.forward(np.load(f'{data_path}/uu_{back_step:04}.npy')) # u measurments at current time step
-        fhm = self.grid.forward(np.load(f'{data_path}/hh_{back_step:04}.npy')) # h measurements at current time step
+        fum = self.grid.forward(np.load(f'{self.data_path}/uu_{back_step:04}.npy')) # u measurments at current time step
+        fhm = self.grid.forward(np.load(f'{self.data_path}/hh_{back_step:04}.npy')) # h measurements at current time step
 
         # Non-linear term
         uu_ = self.grid.inverse(fu_)
