@@ -71,10 +71,10 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         fh_ = fh_p - (self.grid.dt/oo) * (2*(fh-fhm) - self.pm.g*fux_ - fu_hx_)
 
         # de-aliasing
-        # fu[self.grid.zero_mode] = 0.0
-        fu[self.grid.dealias_modes] = 0.0
-        # fh[self.grid.zero_mode] = 0.0 # zero mode for h is not null
-        fh[self.grid.dealias_modes] = 0.0
+        fu_[self.grid.zero_mode] = 0.0
+        fu_[self.grid.dealias_modes] = 0.0
+        fh_[self.grid.zero_mode] = 0.0 # zero mode for h is not null
+        fh_[self.grid.dealias_modes] = 0.0
 
         return [fu_,fh_] # step and back_step for debugging
 

@@ -39,7 +39,7 @@ out_u = np.load(f'{pm.out_path}/adjuu_{val:04}.npy')
 out_h = np.load(f'{pm.out_path}/adjhh_{val:04}.npy')
 out_hb = hb
 
-f,axs = plt.subplots(ncols=3)
+f,axs = plt.subplots(ncols=3, figsize = (15,5))
 
 axs[0].plot(out_hb , label = 'hb')
 axs[0].legend()
