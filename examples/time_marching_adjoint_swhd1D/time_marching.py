@@ -25,8 +25,11 @@ hh_ = np.zeros_like(grid.xx)
 
 fields = [uu_, hh_]
 
+# load hb
+hb = np.load(f'{pm.hb_path}/hb_{pm.iit0}.npy')
+
 # Evolve
-fields = solver.evolve(fields, pm.T, pm.field_path, pm.data_path, bstep=pm.bstep, ostep=pm.ostep)
+fields = solver.evolve(fields, pm.T, bstep=pm.bstep, ostep=pm.ostep)
 
 # Plot Balance
 bal = np.loadtxt(f'{pm.out_path}/balance.dat', unpack=True)
@@ -34,7 +37,7 @@ bal = np.loadtxt(f'{pm.out_path}/balance.dat', unpack=True)
 val = 2*pm.ostep
 out_u = np.load(f'{pm.out_path}/adjuu_{val:04}.npy')
 out_h = np.load(f'{pm.out_path}/adjhh_{val:04}.npy')
-out_hb = np.load(f'{pm.field_path}/hb.npy')
+out_hb = hb
 
 f,axs = plt.subplots(ncols=3)
 

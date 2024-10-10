@@ -7,7 +7,7 @@ from .. import pseudo as ps
 
 class Adjoint_SWHD_1D(PseudoSpectral):
     ''' 1D Adjoint Shallow Water Equations
-        ut_ + u ux_ + (h-hb) hx_ = 2(u-um)
+        ut_ + u ux_ + (u*u_)x + (h-hb) hx_ = 2(u-um)
         ht_ + u hx_ + g ux_  = 2(h-hm)
     where u,h are physical velocity and height fields,
     u_,h_ the adjoint state fields,
@@ -39,9 +39,6 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         # get physical fields and measurements from T to t0, back stepping in time
         Nt = round(self.pm.T/self.pm.dt)
         back_step = Nt-1 - step
-        print('step : ' , step)
-        print('backstep : ', back_step )
-        breakpoint()
         uu = np.load(f'{self.field_path}/uu_{back_step:04}.npy') # u field at current time step
         hh = np.load(f'{self.field_path}/hh_{back_step:04}.npy') # h field at current time step
         hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
@@ -53,9 +50,9 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         fum = self.grid.forward(np.load(f'{self.data_path}/uu_{back_step:04}.npy')) # u measurments at current time step
         fhm = self.grid.forward(np.load(f'{self.data_path}/hh_{back_step:04}.npy')) # h measurements at current time step
 
-        # Non-linear term
+        # calculate terms
         uu_ = self.grid.inverse(fu_)
-        hh_ = self.grid.inverse(fh_)
+        # hh_ = self.grid.inverse(fh_)
 
 
         fux_ = self.grid.deriv(fu_, self.grid.kx)
@@ -64,12 +61,13 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         hx_ = self.grid.inverse(fhx_)
 
         fu_ux_ = self.grid.forward(uu*ux_)
+        fu_u_x = self.grid.deriv(self.grid.forward(uu*uu_), self.grid.kx)
         fu_hx_ = self.grid.forward(uu*hx_)
 
         fh_hb_hx_ = self.grid.forward((hh-hb)*hx_)
 
         # backwards integration in time
-        fu_ = fu_p - (self.grid.dt/oo) * (2*(fu-fum) - fu_ux_ - fh_hb_hx_)
+        fu_ = fu_p - (self.grid.dt/oo) * (2*(fu-fum) - fu_ux_ - fu_u_x - fh_hb_hx_)
         fh_ = fh_p - (self.grid.dt/oo) * (2*(fh-fhm) - self.pm.g*fux_ - fu_hx_)
 
         # de-aliasing
@@ -78,7 +76,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         # fh[self.grid.zero_mode] = 0.0 # zero mode for h is not null
         fh[self.grid.dealias_modes] = 0.0
 
-        return [fu_,fh_]
+        return [fu_,fh_] # step and back_step for debugging
 
     def outs(self, fields, step):
         uu_ = self.grid.inverse(fields[0])

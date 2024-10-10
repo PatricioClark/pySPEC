@@ -46,7 +46,7 @@ c2 = 0.3927
 c3 = 2
 hh0 = fpm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2)
 
-for iit in range(fpm.iit0, 20):
+for iit in range(fpm.iit0, 100):
     # update iit
     fpm.iit = iit
     bpm.iit = iit
@@ -115,11 +115,11 @@ for iit in range(fpm.iit0, 20):
     axs[1].legend()
     axs[2].plot(out_h , label = 'h_')
     axs[2].legend()
-    plt.savefig(f'{fpm.hb_path}/fields_{iit:00}.png')
+    plt.savefig(f'{fpm.hb_path}/fields.png')
 
     plt.figure()
     plt.plot(np.sqrt((hb-true_hb)**2) , label = 'hb error')
-    plt.savefig(f'{fpm.hb_path}/hb_error_{iit:00}.png')
+    plt.savefig(f'{fpm.hb_path}/hb_error.png')
 
 
     loss = np.loadtxt(f'{fpm.hb_path}/loss.dat', unpack=True)
@@ -134,4 +134,4 @@ for iit in range(fpm.iit0, 20):
     plt.plot(val[0], val[1], label = '$(hb-\hat{hb})^2$')
     plt.legend()
     plt.savefig(f'{fpm.hb_path}/hb_val.png')
-    print(f'done iit {iit}')
+    print(f'done iit {fpm.iit}')
