@@ -44,6 +44,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
 
         fu  = self.grid.forward(uu)
+        fux = self.grid.deriv(fu, self.grid.kx)
+        ux = self.grid.inverse(fux)
         fh  = self.grid.forward(hh)
         fhb = self.grid.forward(hb)
 
@@ -75,6 +77,12 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         fu_[self.grid.dealias_modes] = 0.0
         fh_[self.grid.zero_mode] = 0.0 # zero mode for h is not null
         fh_[self.grid.dealias_modes] = 0.0
+
+        dg = self.grid.inverse(fh_)* ux
+        np.save(f'{self.pm.out_path}/h_ux_{step:04}', dg)
+        dg_ = hx_* uu
+        np.save(f'{self.pm.out_path}/hx_uu_{step:04}', dg_)
+
 
         return [fu_,fh_] # step and back_step for debugging
 

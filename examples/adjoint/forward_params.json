@@ -13,9 +13,9 @@
     "g": 2,
     "h0": 2,
     "lgd": 0.01,
-    "out_path": "./adjoint/forward_swhd/outs",
-    "hb_path": "./adjoint/hbs",
-    "field_path": "./adjoint/forward_swhd/outs",
-    "data_path": "./adjoint/make_data_swhd1D/outs"
+    "out_path": "./examples/adjoint/forward_swhd/outs",
+    "hb_path": "./examples/adjoint/hbs",
+    "field_path": "./examples/adjoint/forward_swhd/outs",
+    "data_path": "./examples/adjoint/make_data_swhd1D/outs"
 
 }

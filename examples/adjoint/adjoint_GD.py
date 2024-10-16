@@ -1,7 +1,3 @@
-'''
-Pseudo-spectral solver for the 1D SWHD equation
-'''
-
 import json
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,7 +6,7 @@ from types import SimpleNamespace
 import pySPEC as ps
 from pySPEC.time_marching import SWHD_1D, Adjoint_SWHD_1D
 
-param_path = 'adjoint'
+param_path = 'examples/adjoint'
 # Parse JSON into an object with attributes corresponding to dict keys.
 fpm = json.load(open(f'{param_path}/forward_params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 fpm.Lx = 2*np.pi*fpm.Lx
@@ -18,10 +14,9 @@ fpm.Lx = 2*np.pi*fpm.Lx
 bpm = json.load(open(f'{param_path}/backward_params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 bpm.Lx = 2*np.pi*bpm.Lx
 
-# Initialize solver
+# Initialize grid
 grid   = ps.Grid1D(fpm)
-fsolver = SWHD_1D(fpm)
-bsolver = Adjoint_SWHD_1D(bpm)
+
 
 
 # true hb
@@ -50,6 +45,9 @@ for iit in range(fpm.iit0, 100):
     # update iit
     fpm.iit = iit
     bpm.iit = iit
+    # initialize solver at each step
+    fsolver = SWHD_1D(fpm)
+    bsolver = Adjoint_SWHD_1D(bpm)
     # catch initial conditions for foward integration
     uu = uu0
     hh = hh0
@@ -87,7 +85,7 @@ for iit in range(fpm.iit0, 100):
     print(f'done backward')
 
     # calculate dg/dhb = h_ * ux at t = 0 (initial time for forward pass)
-    print(f'\niit {iit} : calculate dg/hb')
+    print(f'\niit {iit} : calculate dg/dhb')
     dg = fields[1] * uu0x
     print('done')
 
@@ -99,6 +97,7 @@ for iit in range(fpm.iit0, 100):
     # save for the following iteration
     print(f'\niit {iit} : save hb')
     np.save(f'{fpm.hb_path}/hb_{iit+1:00}.npy', hb)
+    np.save(f'{fpm.hb_path}/dg_{iit+1:00}.npy', dg)
     print('done')
 
     # Plot fields
@@ -111,9 +110,9 @@ for iit in range(fpm.iit0, 100):
     axs[0].plot(hb , color = 'blue', label = 'pred hb')
     axs[0].plot(true_hb , alpha = 0.6, color = 'green', label = 'true hb')
     axs[0].legend()
-    axs[1].plot(out_u , label = 'u_')
+    axs[1].plot(out_u , label = 'u')
     axs[1].legend()
-    axs[2].plot(out_h , label = 'h_')
+    axs[2].plot(out_h , label = 'h')
     axs[2].legend()
     plt.savefig(f'{fpm.hb_path}/fields.png')
 
