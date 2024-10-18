@@ -1,10 +1,16 @@
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+
 from types import SimpleNamespace
 
 import pySPEC as ps
 from pySPEC.time_marching import SWHD_1D, Adjoint_SWHD_1D
+
+
+
+
 
 param_path = 'examples/adjoint'
 # Parse JSON into an object with attributes corresponding to dict keys.
@@ -14,10 +20,14 @@ fpm.Lx = 2*np.pi*fpm.Lx
 bpm = json.load(open(f'{param_path}/backward_params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 bpm.Lx = 2*np.pi*bpm.Lx
 
+# remove all files from hb_path
+for filename in os.listdir(fpm.hb_path):
+    file_path = os.path.join(fpm.hb_path, filename)
+    if os.path.isfile(file_path):
+        os.remove(file_path)  # Remove the file
+
 # Initialize grid
 grid   = ps.Grid1D(fpm)
-
-
 
 # true hb
 true_hb = np.load(f'{bpm.data_path}/hb.npy')
@@ -86,12 +96,14 @@ for iit in range(fpm.iit0, 100):
 
     # calculate dg/dhb = h_ * ux at t = 0 (initial time for forward pass)
     print(f'\niit {iit} : calculate dg/dhb')
-    dg = fields[1] * uu0x
+    # dg = fields[1] * uu0x # only h_ * ux at time 0
+    Nt = round(fpm.T/fpm.dt)
+    dg =  np.array([np.load(f'{bpm.out_path}/h_ux_{step:04}.npy') for step in range(Nt)]).sum(axis=0) # integrate h_ux in all t
     print('done')
 
     # update hb values with GD
     print(f'\niit {iit} : update hb')
-    hb = hb - bpm.lgd * dg
+    hb = hb + bpm.lgd * dg
     print('done')
 
     # save for the following iteration

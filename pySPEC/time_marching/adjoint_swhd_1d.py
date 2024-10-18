@@ -24,6 +24,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.data_path = pm.data_path
         self.field_path = pm.field_path
         self.hb_path = pm.hb_path
+        self.hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
+
 
     def rkstep(self, fields, prev, oo):
         # Unpack
@@ -41,7 +43,12 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         back_step = Nt-1 - step
         uu = np.load(f'{self.field_path}/uu_{back_step:04}.npy') # u field at current time step
         hh = np.load(f'{self.field_path}/hh_{back_step:04}.npy') # h field at current time step
-        hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
+        hb = self.hb
+        # # save hb stats to debug
+        # if step == 2:
+        #         loss = [f'{self.iit}', f'{hb.mean():.6e}'  , f'{hb.std():.6e}' ,  f'{hb.max():.6e}' , f'{hb.min():.6e}']
+        #         with open(f'{self.pm.hb_path}/back_hb_stats.dat', 'a') as output:
+        #             print(*loss, file=output)
 
         fu  = self.grid.forward(uu)
         fux = self.grid.deriv(fu, self.grid.kx)
@@ -80,11 +87,11 @@ class Adjoint_SWHD_1D(PseudoSpectral):
 
         dg = self.grid.inverse(fh_)* ux
         np.save(f'{self.pm.out_path}/h_ux_{step:04}', dg)
-        dg_ = hx_* uu
-        np.save(f'{self.pm.out_path}/hx_uu_{step:04}', dg_)
+        # dg_ = hx_* uu
+        # np.save(f'{self.pm.out_path}/hx_uu_{step:04}', dg_)
 
 
-        return [fu_,fh_] # step and back_step for debugging
+        return [fu_,fh_]
 
     def outs(self, fields, step):
         uu_ = self.grid.inverse(fields[0])

@@ -12,7 +12,7 @@
     "stat": 0,
     "g": 2,
     "h0": 2,
-    "lgd": 0.01,
+    "lgd": 1e-4,
     "out_path": "./examples/adjoint/forward_swhd/outs",
     "hb_path": "./examples/adjoint/hbs",
     "field_path": "./examples/adjoint/forward_swhd/outs",

@@ -20,6 +20,7 @@ class SWHD_1D(PseudoSpectral):
         self.grid = ps.Grid1D(pm)
         self.iit = pm.iit
         self.hb_path = pm.hb_path
+        self.hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
 
     def rkstep(self, fields, prev, oo):
         # Unpack
@@ -29,7 +30,13 @@ class SWHD_1D(PseudoSpectral):
         fh  = fields[1]
         fhp = prev[1]
 
-        hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
+        hb = self.hb
+        # save hb stats to debug
+        # save hb stats to debug
+        # if self.current_step == 2:
+        #         loss = [f'{self.iit}', f'{hb.mean():.6e}'  , f'{hb.std():.6e}' ,  f'{hb.max():.6e}' , f'{hb.min():.6e}']
+        #         with open(f'{self.pm.hb_path}/front_hb_stats.dat', 'a') as output:
+        #             print(*loss, file=output)
 
         # Non-linear term
         uu = self.grid.inverse(fu)
