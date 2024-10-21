@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import pySPEC as ps
 from pySPEC.time_marching import SWHD_1D
 
-param_path = 'adjoint/make_data_swhd1D'
+param_path = 'examples/adjoint/make_data_swhd1D'
 # Parse JSON into an object with attributes corresponding to dict keys.
 pm = json.load(open(f'{param_path}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 pm.Lx = 2*np.pi*pm.Lx
