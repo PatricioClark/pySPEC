@@ -13,7 +13,7 @@
     "g": 2,
     "h0": 2,
     "lgd": 1e1,
-    "out_path": "./examples/adjoint_hx_uu/backward_swhd/outs",
+    "out_path": "./examples/adjoint_hx_uu/forward_swhd/outs",
     "hb_path": "./examples/adjoint_hx_uu/hbs",
     "field_path": "./examples/adjoint_hx_uu/forward_swhd/outs",
     "data_path": "./examples/adjoint/make_data_swhd1D/outs"
