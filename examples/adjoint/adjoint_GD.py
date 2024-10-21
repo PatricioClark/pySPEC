@@ -20,11 +20,15 @@ fpm.Lx = 2*np.pi*fpm.Lx
 bpm = json.load(open(f'{param_path}/backward_params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 bpm.Lx = 2*np.pi*bpm.Lx
 
-# remove all files from hb_path
-for filename in os.listdir(fpm.hb_path):
-    file_path = os.path.join(fpm.hb_path, filename)
-    if os.path.isfile(file_path):
-        os.remove(file_path)  # Remove the file
+# remove all files from hb_path if restarting GD
+if fpm.iit0 == 0:
+    for filename in os.listdir(fpm.hb_path):
+        file_path = os.path.join(fpm.hb_path, filename)
+        if os.path.isfile(file_path):
+            os.remove(file_path)  # Remove the file
+else:
+    fpm.iit = fpm.iit0
+    bpm.iit = bpm.iit0
 
 # Initialize grid
 grid   = ps.Grid1D(fpm)
@@ -34,6 +38,7 @@ true_hb = np.load(f'{bpm.data_path}/hb.npy')
 # initial hb
 try:
     hb = np.load(f'{fpm.hb_path}/hb_{fpm.iit0}.npy')
+    print(f'succesfully grabbed last hb from iit = {fpm.iit0}')
 except:
     print('make initial flat hb for GD')
     np.save(f'{fpm.hb_path}/hb_{fpm.iit0:00}.npy', np.zeros_like(true_hb))
@@ -94,16 +99,15 @@ for iit in range(fpm.iit0, 100):
     fields = bsolver.evolve(fields, bpm.T, bstep=bpm.bstep, ostep=bpm.ostep)
     print(f'done backward')
 
-    # calculate dg/dhb = h_ * ux at t = 0 (initial time for forward pass)
+    # integrate h_*ux from T to t=0
     print(f'\niit {iit} : calculate dg/dhb')
-    # dg = fields[1] * uu0x # only h_ * ux at time 0
     Nt = round(fpm.T/fpm.dt)
-    dg =  np.array([np.load(f'{bpm.out_path}/h_ux_{step:04}.npy') for step in range(Nt)]).sum(axis=0) # integrate h_ux in all t
+    dg = np.trapz(np.array([np.load(f'{bpm.out_path}/h_ux_{step:04}.npy') for step in range(Nt)]), dx = -1e-4, axis = 0) # -dt because integration is from T to t=0
     print('done')
 
     # update hb values with GD
     print(f'\niit {iit} : update hb')
-    hb = hb + bpm.lgd * dg
+    hb = hb - bpm.lgd * dg
     print('done')
 
     # save for the following iteration
