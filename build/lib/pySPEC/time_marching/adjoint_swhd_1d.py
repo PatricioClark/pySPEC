@@ -44,6 +44,11 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         uu = np.load(f'{self.field_path}/uu_{back_step:04}.npy') # u field at current time step
         hh = np.load(f'{self.field_path}/hh_{back_step:04}.npy') # h field at current time step
         hb = self.hb
+        # # save hb stats to debug
+        # if step == 2:
+        #         loss = [f'{self.iit}', f'{hb.mean():.6e}'  , f'{hb.std():.6e}' ,  f'{hb.max():.6e}' , f'{hb.min():.6e}']
+        #         with open(f'{self.pm.hb_path}/back_hb_stats.dat', 'a') as output:
+        #             print(*loss, file=output)
 
         fu  = self.grid.forward(uu)
         fux = self.grid.deriv(fu, self.grid.kx)
@@ -57,6 +62,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         # calculate terms
         uu_ = self.grid.inverse(fu_)
         # hh_ = self.grid.inverse(fh_)
+
 
         fux_ = self.grid.deriv(fu_, self.grid.kx)
         ux_ = self.grid.inverse(fux_)
@@ -73,28 +79,17 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         fu_ = fu_p - (self.grid.dt/oo) * (2*(fu-fum) - fu_ux_ - fu_u_x - fh_hb_hx_)
         fh_ = fh_p - (self.grid.dt/oo) * (2*(fh-fhm) - self.pm.g*fux_ - fu_hx_)
 
-        # save zero modes for debugging
-        np.save(f'{self.pm.out_path}/adjoint_zero_modes_{step:04}', np.array([fu_[self.grid.zero_mode], fh_[self.grid.zero_mode]]))
-
-
         # de-aliasing
-        # fu_[self.grid.zero_mode] = 0.0 # It would seem u_ should have mode zero
+        fu_[self.grid.zero_mode] = 0.0
         fu_[self.grid.dealias_modes] = 0.0
-        fh_[self.grid.zero_mode] = 0.0 # It would seem h_ should not have mode zero
+        fh_[self.grid.zero_mode] = 0.0 # zero mode for h is not null
         fh_[self.grid.dealias_modes] = 0.0
 
+        dg = self.grid.inverse(fh_)* ux
+        np.save(f'{self.pm.out_path}/h_ux_{step:04}', dg)
+        # dg_ = hx_* uu
+        # np.save(f'{self.pm.out_path}/hx_uu_{step:04}', dg_)
 
-        # GD step
-        # dg_non_dealiased = self.grid.inverse(fh_)* ux
-        # np.save(f'{self.pm.out_path}/h_ux_non_dealiased{step:04}', dg_non_dealiased) # compare to dealiased
-        # fdg = self.grid.forward(dg_non_dealiased)
-        non_dealiased_dg_ = hx_* uu
-        fdg_ = self.grid.forward(non_dealiased_dg_)
-        # de-aliasing GD step
-        # fdg[self.grid.zero_mode] = 0.0 # should I dealias zero mode here?
-        fdg_[self.grid.dealias_modes] = 0.0
-        dg_ = self.grid.inverse(fdg_)
-        np.save(f'{self.pm.out_path}/hx_uu_{step:04}', dg_)
 
         return [fu_,fh_]
 

@@ -1,0 +1,20 @@
+{
+    "Lx": 1.0,
+    "Nx": 1024,
+    "T": 2,
+    "dt": 1e-4,
+    "iit0": 0,
+    "iit":0,
+    "rkord": 2,
+    "bstep": 250,
+    "ostep": 1,
+    "plot_step":250,
+    "stat": 0,
+    "g": 2,
+    "h0": 2,
+    "lgd": 1e1,
+    "out_path": "./examples/adjoint_hx_uu/backward_swhd/outs",
+    "hb_path": "./examples/adjoint_hx_uu/hbs",
+    "field_path": "./examples/adjoint_hx_uu/forward_swhd/outs",
+    "data_path": "./examples/adjoint/make_data_swhd1D/outs"
+}
