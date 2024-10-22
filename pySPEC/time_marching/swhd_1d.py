@@ -20,7 +20,9 @@ class SWHD_1D(PseudoSpectral):
         self.grid = ps.Grid1D(pm)
         self.iit = pm.iit
         self.hb_path = pm.hb_path
-        self.hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
+        # self.hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
+        self.hb = np.load(f'{self.hb_path}/hb_memmap.npy', mmap_mode='r')[self.iit-1]  # Access the data at the current iteration and Load hb at current GD iteration
+
 
     def rkstep(self, fields, prev, oo):
         # Unpack

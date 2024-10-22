@@ -24,7 +24,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.data_path = pm.data_path
         self.field_path = pm.field_path
         self.hb_path = pm.hb_path
-        self.hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
+        # self.hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
+        self.hb = np.load(f'{self.hb_path}/hb_memmap.npy', mmap_mode='r')[self.iit-1]  # Access the data at the current iteration and Load hb at current GD iteration
 
 
     def rkstep(self, fields, prev, oo):
@@ -83,11 +84,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         fh_[self.grid.zero_mode] = 0.0 # It would seem h_ should not have mode zero
         fh_[self.grid.dealias_modes] = 0.0
 
-
         # GD step
-        # dg_non_dealiased = self.grid.inverse(fh_)* ux
-        # np.save(f'{self.pm.out_path}/h_ux_non_dealiased{step:04}', dg_non_dealiased) # compare to dealiased
-        # fdg = self.grid.forward(dg_non_dealiased)
         non_dealiased_dg_ = hx_* uu
         fdg_ = self.grid.forward(non_dealiased_dg_)
         # de-aliasing GD step
