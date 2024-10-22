@@ -56,7 +56,7 @@ c2 = 0.3927
 c3 = 2
 hh0 = fpm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2)
 
-for iit in range(fpm.iit0, 100):
+for iit in range(fpm.iit0, 200):
     # update iit
     fpm.iit = iit
     bpm.iit = iit
@@ -102,8 +102,8 @@ for iit in range(fpm.iit0, 100):
     np.save(f'{fpm.hb_path}/dg_{iit+1:00}.npy', dg)
     print('done')
 
-    # calculate loss for new fields    
-    u_loss = np.sum(np.array([(np.load(f'{bpm.data_path}/uu_{tstep:04}.npy') - np.load(f'{bpm.field_path}/uu_{tstep:04}.npy'))**2 for tstep in range(0, int(fpm.T/fpm.dt), 250)]))                                                                                                                          
+    # calculate loss for new fields
+    u_loss = np.sum(np.array([(np.load(f'{bpm.data_path}/uu_{tstep:04}.npy') - np.load(f'{bpm.field_path}/uu_{tstep:04}.npy'))**2 for tstep in range(0, int(fpm.T/fpm.dt), 250)]))
     h_loss = np.sum(np.array([(np.load(f'{bpm.data_path}/hh_{tstep:04}.npy') - np.load(f'{bpm.field_path}/hh_{tstep:04}.npy'))**2 for tstep in range(0, int(fpm.T/fpm.dt), 250)]))
 
     loss = [f'{iit}', f'{u_loss:.6e}' , f'{h_loss:.6e}']
