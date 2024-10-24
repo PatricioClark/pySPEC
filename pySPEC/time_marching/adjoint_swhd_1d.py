@@ -85,13 +85,27 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         fh_[self.grid.dealias_modes] = 0.0
 
         # GD step
+        # update new hx_
+        fhx_ = self.grid.deriv(fh_, self.grid.kx)
+        hx_ = self.grid.inverse(fhx_)
+        # multiply with field
         non_dealiased_dg_ = hx_* uu
         fdg_ = self.grid.forward(non_dealiased_dg_)
         # de-aliasing GD step
-        # fdg[self.grid.zero_mode] = 0.0 # should I dealias zero mode here?
         fdg_[self.grid.dealias_modes] = 0.0
         dg_ = self.grid.inverse(fdg_)
         np.save(f'{self.pm.out_path}/hx_uu_{step:04}', dg_)
+
+        # alternative GD step
+        # update new h_
+        h_ = self.grid.inverse(fh_)
+        # multiply with field
+        non_dealiased_dg = h_* ux
+        fdg = self.grid.forward(non_dealiased_dg)
+        # de-aliasing GD step
+        fdg[self.grid.dealias_modes] = 0.0
+        dg = self.grid.inverse(fdg)
+        np.save(f'{self.pm.out_path}/h_ux_{step:04}', dg)
 
         return [fu_,fh_]
 

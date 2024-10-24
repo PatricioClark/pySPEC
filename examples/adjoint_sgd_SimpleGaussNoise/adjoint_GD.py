@@ -10,20 +10,23 @@ from types import SimpleNamespace
 
 import pySPEC as ps
 from pySPEC.time_marching import SWHD_1D, Adjoint_SWHD_1D
-from mod import *
-from lbfgs import *
 
-param_path = 'examples/adjoint_lbfgs'
+from mod import *
+
+param_path = 'examples/adjoint_sgd_SimpleGaussNoise'
 # Parse JSON into an object with attributes corresponding to dict keys.
 fpm = json.load(open(f'{param_path}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 fpm.Lx = 2*np.pi*fpm.Lx
 fpm.out_path = fpm.forward_out_path
+check_dir(fpm.out_path) # make out path if it doesn't exist
 fpm.ostep = fpm.forward_ostep
 # Parse JSON into an object with attributes corresponding to dict keys.
 bpm = json.load(open(f'{param_path}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 bpm.Lx = 2*np.pi*bpm.Lx
 bpm.out_path = bpm.backward_out_path
+check_dir(bpm.out_path) # make out path if it doesn't exist
 bpm.ostep = bpm.backward_ostep
+
 
 # Initialize grid
 grid   = ps.Grid1D(fpm)
@@ -31,7 +34,12 @@ grid   = ps.Grid1D(fpm)
 # total number of iterations
 total_iterations = bpm.iitN - bpm.iit0 - 1
 
+#####################################
+
+#######################################################
+
 # remove all files from hb_path if restarting GD
+check_dir(bpm.hb_path) # make out path if it doesn't exist
 if fpm.iit0 == 0:
     for filename in os.listdir(fpm.hb_path):
         file_path = os.path.join(fpm.hb_path, filename)
@@ -54,7 +62,7 @@ try:
     print(f'succesfully grabbed last hb from iit = {fpm.iit0}')
 except:
     print('make initial flat hb for GD')
-    save_memmap(f'{bpm.hb_path}/hb_memmap.npy', np.zeros_like(true_hb), bpm.iit0,  total_iterations)
+    save_memmap(f'{fpm.hb_path}/hb_memmap.npy', np.zeros_like(true_hb), bpm.iit0,  total_iterations)
     hb = np.load(f'{bpm.hb_path}/hb_memmap.npy', mmap_mode='r')[bpm.iit0]  # Access the data at the current iteration and Load hb at current GD iteration
 
 # initial dg
@@ -68,28 +76,30 @@ except:
 
 # Initial conditions
 v1 = 0.05
-v2 = 0.3927
+v2 =  0.3927
 v3 = 2
-uu0 = v1 * np.exp(-((grid.xx - np.pi/v3) ** 2) / v2 ** 2)
-uu0x = - v1 * 2 *( (grid.xx - np.pi/v3)/v2**2 ) * np.exp(-((grid.xx - np.pi/v3) ** 2) / v2 ** 2)
+v4 = 0.001
+noise = np.zeros_like(grid.xx)
+for ki in range(10,20+1):
+    noise = noise + v4*np.cos(ki*grid.xx)
+uu0 = v1 * np.exp(-((grid.xx - np.pi/v3) ** 2) / v2 ** 2) + noise
 
 c1 = 0.05
 c2 = 0.3927
 c3 = 2
-hh0 = fpm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2)
+hh0 = fpm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2) + noise
+
 
 # momentum gradient descent optimizer
 # Initialize the momentum optimizer
 opt_init, opt_update = optax.sgd(learning_rate=bpm.lgd, momentum=0.9)
-opt_state = opt_init(hb)
 # Gradient update step
 def update(params, grad, opt_state):
     updates, opt_state = opt_update(grad, opt_state, params)
     new_params = optax.apply_updates(params, updates)
     return new_params, opt_state
+opt_state = opt_init(hb)
 
-# m for lbfgs
-m = 10
 for iit in range(fpm.iit0 + 1, fpm.iitN):
     # update iit
     fpm.iit = iit
@@ -125,20 +135,16 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
     dg = np.trapz(np.array([np.load(f'{bpm.out_path}/hx_uu_{step:04}.npy') for step in range(Nt)]), dx = 1e-4, axis = 0) # dt because integration forward
     print('done')
 
-    # update hb values with lbfgs
+    # update hb values with momentum GD
     print(f'\niit {iit} : update hb')
-    if iit < m:
-        print('using sgd for update')
-        hb, opt_state = update(hb, dg, opt_state)
-    else:
-        print('using lbfgs for update')
-        z = lbfgs(iit , m = m , hb_path = bpm.hb_path, dg = dg)
-        hb = hb + z
-    # Perform the optimization using L-BFGS-B
+    # Apply the update
+    hb, opt_state = update(hb, dg, opt_state)
     print('done')
 
     # save for the following iteration
     print(f'\niit {iit} : save hb')
+    # np.save(f'{fpm.hb_path}/hb_{iit+1:00}.npy', hb)
+    # np.save(f'{fpm.hb_path}/dg_{iit+1:00}.npy', dg)
     # Save hb and dg using memmap after each iteration
     save_memmap(f'{fpm.hb_path}/hb_memmap.npy', hb, iit,  total_iterations)
     save_memmap(f'{fpm.hb_path}/dg_memmap.npy', dg, iit,  total_iterations)

@@ -11,7 +11,9 @@ from types import SimpleNamespace
 import pySPEC as ps
 from pySPEC.time_marching import SWHD_1D, Adjoint_SWHD_1D
 
-param_path = 'examples/adjoint_momentum'
+from mod import *
+
+param_path = 'examples/adjoint_sgd'
 # Parse JSON into an object with attributes corresponding to dict keys.
 fpm = json.load(open(f'{param_path}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 fpm.Lx = 2*np.pi*fpm.Lx
@@ -23,6 +25,15 @@ bpm.Lx = 2*np.pi*bpm.Lx
 bpm.out_path = bpm.backward_out_path
 bpm.ostep = bpm.backward_ostep
 
+# Initialize grid
+grid   = ps.Grid1D(fpm)
+
+# total number of iterations
+total_iterations = bpm.iitN - bpm.iit0 - 1
+
+#####################################
+
+#######################################################
 
 # remove all files from hb_path if restarting GD
 if fpm.iit0 == 0:
@@ -33,31 +44,31 @@ if fpm.iit0 == 0:
 else:
     fpm.iit = fpm.iit0
     bpm.iit = bpm.iit0
+    # handle .dat files if restarting from a previous run
+    update_loss_file(f'{fpm.hb_path}/loss.dat', bpm.iit0)
+    update_loss_file(f'{fpm.hb_path}/hb_val.dat', bpm.iit0)
 
-# Initialize grid
-grid   = ps.Grid1D(fpm)
 
 # true hb
 true_hb = np.load(f'{bpm.data_path}/hb.npy')
+
 # initial hb
 try:
-    hb = np.load(f'{fpm.hb_path}/hb_{fpm.iit0}.npy')
+    hb = np.load(f'{bpm.hb_path}/hb_memmap.npy', mmap_mode='r')[bpm.iit0]  # Access the data at the current iteration and Load hb at current GD iteration
     print(f'succesfully grabbed last hb from iit = {fpm.iit0}')
 except:
     print('make initial flat hb for GD')
-    np.save(f'{fpm.hb_path}/hb_{fpm.iit0:00}.npy', np.zeros_like(true_hb))
-    hb = np.load(f'{fpm.hb_path}/hb_{fpm.iit0}.npy')
+    save_memmap(f'{fpm.hb_path}/hb_memmap.npy', np.zeros_like(true_hb), bpm.iit0,  total_iterations)
+    hb = np.load(f'{bpm.hb_path}/hb_memmap.npy', mmap_mode='r')[bpm.iit0]  # Access the data at the current iteration and Load hb at current GD iteration
 
-# momentum gradient descent optimizer
-# Initialize the momentum optimizer
-opt_init, opt_update = optax.sgd(learning_rate=bpm.lgd, momentum=0.9)
-opt_state = opt_init(hb)
-# Gradient update step
-def update(params, grad, opt_state):
-    updates, opt_state = opt_update(grad, opt_state, params)
-    new_params = optax.apply_updates(params, updates)
-    return new_params, opt_state
-
+# initial dg
+try:
+    dg = np.load(f'{bpm.hb_path}/dg_memmap.npy', mmap_mode='r')[bpm.iit0]  # Access the data at the current iteration and Load dg at current GD iteration
+    print(f'succesfully grabbed last dg from iit = {fpm.iit0}')
+except:
+    print('make initial flat hb for GD')
+    save_memmap(f'{fpm.hb_path}/dg_memmap.npy', np.zeros_like(true_hb), bpm.iit0,  total_iterations)
+    dg = np.load(f'{bpm.hb_path}/dg_memmap.npy', mmap_mode='r')[bpm.iit0]  # Access the data at the current iteration and Load hb at current GD iteration
 # Initial conditions
 v1 = 0.05
 v2 = 0.3927
@@ -70,7 +81,18 @@ c2 = 0.3927
 c3 = 2
 hh0 = fpm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2)
 
-for iit in range(fpm.iit0, 200):
+
+# momentum gradient descent optimizer
+# Initialize the momentum optimizer
+opt_init, opt_update = optax.sgd(learning_rate=bpm.lgd, momentum=0.9)
+# Gradient update step
+def update(params, grad, opt_state):
+    updates, opt_state = opt_update(grad, opt_state, params)
+    new_params = optax.apply_updates(params, updates)
+    return new_params, opt_state
+opt_state = opt_init(hb)
+
+for iit in range(fpm.iit0 + 1, fpm.iitN):
     # update iit
     fpm.iit = iit
     bpm.iit = iit
@@ -113,8 +135,11 @@ for iit in range(fpm.iit0, 200):
 
     # save for the following iteration
     print(f'\niit {iit} : save hb')
-    np.save(f'{fpm.hb_path}/hb_{iit+1:00}.npy', hb)
-    np.save(f'{fpm.hb_path}/dg_{iit+1:00}.npy', dg)
+    # np.save(f'{fpm.hb_path}/hb_{iit+1:00}.npy', hb)
+    # np.save(f'{fpm.hb_path}/dg_{iit+1:00}.npy', dg)
+    # Save hb and dg using memmap after each iteration
+    save_memmap(f'{fpm.hb_path}/hb_memmap.npy', hb, iit,  total_iterations)
+    save_memmap(f'{fpm.hb_path}/dg_memmap.npy', dg, iit,  total_iterations)
     print('done')
 
     # calculate loss for new fields
