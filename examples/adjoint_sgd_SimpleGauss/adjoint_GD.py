@@ -132,7 +132,8 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
     # try using h_ux
     # dg = np.trapz(np.array([np.load(f'{bpm.out_path}/h_ux_{step:04}.npy') for step in range(Nt)]), dx = - 1e-4, axis = 0) # dt because integration backward
     # try using hx_u
-    dg = np.trapz(np.array([np.load(f'{bpm.out_path}/hx_uu_{step:04}.npy') for step in range(Nt)]), dx = 1e-4, axis = 0) # dt because integration forward
+    dg = np.trapz( np.load(f'{bpm.out_path}/hx_uu_memmap.npy', mmap_mode='r'), dx = 1e-4, axis = 0)
+    # dg = np.trapz(np.array([np.load(f'{bpm.out_path}/hx_uu_{step:04}.npy') for step in range(Nt)]), dx = 1e-4, axis = 0) # dt because integration forward
     print('done')
 
     # update hb values with momentum GD
@@ -151,8 +152,14 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
     print('done')
 
     # calculate loss for new fields
-    u_loss = np.sum(np.array([(np.load(f'{bpm.data_path}/uu_{tstep:04}.npy') - np.load(f'{bpm.field_path}/uu_{tstep:04}.npy'))**2 for tstep in range(0, int(fpm.T/fpm.dt), 250)]))
-    h_loss = np.sum(np.array([(np.load(f'{bpm.data_path}/hh_{tstep:04}.npy') - np.load(f'{bpm.field_path}/hh_{tstep:04}.npy'))**2 for tstep in range(0, int(fpm.T/fpm.dt), 250)]))
+    # u_loss = np.sum(np.array([(np.load(f'{bpm.data_path}/uu_{tstep:04}.npy') - np.load(f'{bpm.field_path}/uu_{tstep:04}.npy'))**2 for tstep in range(0, int(fpm.T/fpm.dt), 250)]))
+    # h_loss = np.sum(np.array([(np.load(f'{bpm.data_path}/hh_{tstep:04}.npy') - np.load(f'{bpm.field_path}/hh_{tstep:04}.npy'))**2 for tstep in range(0, int(fpm.T/fpm.dt), 250)]))
+    uus =  np.load(f'{bpm.field_path}/uu_memmap.npy', mmap_mode='r') # all uu fields in time
+    hhs =  np.load(f'{bpm.field_path}/hh_memmap.npy', mmap_mode='r') # all hh fields in time
+    uums =  np.load(f'{bpm.data_path}/uu_memmap.npy', mmap_mode='r')[:Nt] # all uu measurements in time
+    hhms=  np.load(f'{bpm.data_path}/hh_memmap.npy', mmap_mode='r')[:Nt] # all hh measurements in time
+    u_loss = np.sum((uums - uus)**2)
+    h_loss = np.sum((uums - uus)**2)
 
     loss = [f'{iit}', f'{u_loss:.6e}' , f'{h_loss:.6e}']
     with open(f'{fpm.hb_path}/loss.dat', 'a') as output:
@@ -166,8 +173,12 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
     # Plot fields
     print(f'\niit {iit} : plot')
     tval = int(fpm.T/fpm.dt*0.5)
-    out_u = np.load(f'{fpm.out_path}/uu_{tval:04}.npy')
-    out_h = np.load(f'{fpm.out_path}/hh_{tval:04}.npy')
+    # out_u = np.load(f'{fpm.out_path}/uu_{tval:04}.npy')
+    # out_h = np.load(f'{fpm.out_path}/hh_{tval:04}.npy')
+    out_u = np.load(f'{fpm.out_path}/uu_memmap.npy', mmap_mode='r')[tval] # all uu fields in time
+    out_h = np.load(f'{fpm.out_path}/hh_memmap.npy', mmap_mode='r')[tval] # all uu fields in time
+
+    plt.close("all")
 
     f,axs = plt.subplots(ncols=3, figsize = (15,5))
     axs[0].plot(hb , color = 'blue', label = 'pred hb')
