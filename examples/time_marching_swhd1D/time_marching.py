@@ -44,9 +44,10 @@ fields = solver.evolve(fields, pm.T, bstep=pm.bstep, ostep=pm.ostep)
 bal = np.loadtxt(f'{pm.out_path}/balance.dat', unpack=True)
 # Plot fields
 val = 2*pm.ostep
-out_u = np.load(f'{pm.out_path}/uu_{val:04}.npy')
-out_h = np.load(f'{pm.out_path}/hh_{val:04}.npy')
-out_hb = np.load(f'{pm.hb_path}/hb_{pm.iit}.npy')
+val = 2*pm.ostep
+out_u = np.load(f'{pm.out_path}/uu_memmap.npy', mmap_mode='r')[pm.ostep*1000] # all uu fields in time
+out_h = np.load(f'{pm.out_path}/hh_memmap.npy', mmap_mode='r')[pm.ostep*1000] # all uu fields in time
+out_hb = np.load(f'{pm.out_path}/hb.npy')
 
 f,axs = plt.subplots(ncols=3)
 

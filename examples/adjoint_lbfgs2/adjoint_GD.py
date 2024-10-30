@@ -14,7 +14,7 @@ from pySPEC.time_marching import SWHD_1D, Adjoint_SWHD_1D
 
 from mod import *
 
-param_path = 'examples/adjoint_lbfgs'
+param_path = 'examples/adjoint_lbfgs2'
 # Parse JSON into an object with attributes corresponding to dict keys.
 fpm = json.load(open(f'{param_path}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 fpm.Lx = 2*np.pi*fpm.Lx
