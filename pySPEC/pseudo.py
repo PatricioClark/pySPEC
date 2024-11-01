@@ -43,7 +43,8 @@ class Grid1D:
 
     def avg(self, ui):
         ''' Mean in Fourier space '''
-        return 2.0 * self.norm * np.sum(ui)
+        print(self.norm)
+        return self.norm * (np.sum(ui[:, 0]) + 2.0*np.sum(ui[:, 1:]))
 
     @staticmethod
     def inner(a, b):
