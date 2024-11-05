@@ -37,13 +37,15 @@ hh = pm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2) + noise
 s0 =  0.5
 s1 = 0.3
 s3 = 1
-s4 = 0.001
+s4 = 0.01
 noise_hb = np.zeros_like(grid.xx)
-for ki in range(10,100+1):
+for ki in range(5,20):
     noise_hb = noise_hb + s4*np.cos(ki*grid.xx)
 
 hb = s0*np.exp(-(grid.xx-np.pi)**2/s1**2) + noise_hb # the true hb
 np.save(f'{pm.hb_path}/hb_{pm.iit}.npy', hb)
+np.save(f'{pm.out_path}/hb.npy', hb)
+
 fields = [uu, hh]
 
 # Evolve
@@ -57,7 +59,7 @@ out_u = np.load(f'{pm.out_path}/uu_memmap.npy', mmap_mode='r')[pm.ostep*1000] # 
 out_h = np.load(f'{pm.out_path}/hh_memmap.npy', mmap_mode='r')[pm.ostep*1000] # all uu fields in time
 out_hb = np.load(f'{pm.out_path}/hb.npy')
 
-f,axs = plt.subplots(ncols=3)
+f,axs = plt.subplots(ncols=3, figsize = (15,5))
 
 axs[0].plot(out_hb , label = 'hb')
 axs[0].legend()
@@ -65,4 +67,4 @@ axs[1].plot(out_u , label = 'u')
 axs[1].legend()
 axs[2].plot(out_h , label = 'h')
 axs[2].legend()
-plt.savefig(f'{pm.out_path}/fields.png')
+plt.savefig(f'{param_path}/fields.png')

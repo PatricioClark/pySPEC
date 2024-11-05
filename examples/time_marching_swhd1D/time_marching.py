@@ -6,18 +6,15 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 from types import SimpleNamespace
-
+import os
 import pySPEC as ps
 from pySPEC.time_marching import SWHD_1D
 
-param_path = 'examples/time_marching_swhd1D'
+current_dir = os.path.dirname(os.path.abspath(__file__))
 # Parse JSON into an object with attributes corresponding to dict keys.
-pm = json.load(open(f'{param_path}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
+pm = json.load(open(f'{current_dir}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 pm.Lx = 2*np.pi*pm.Lx
-
-# Initialize solver
 grid   = ps.Grid1D(pm)
-solver = SWHD_1D(pm)
 
 # Initial conditions
 v1 = 0.05
@@ -35,7 +32,11 @@ s1 = 0.3
 s3 = 1
 hb = s0*np.exp(-(grid.xx-np.pi)**2/s1**2) # the true hb
 np.save(f'{pm.hb_path}/hb_{pm.iit}.npy', hb)
+np.save(f'{pm.out_path}/hb.npy', hb)
 fields = [uu, hh]
+
+# Initialize solver
+solver = SWHD_1D(pm)
 
 # Evolve
 fields = solver.evolve(fields, pm.T, bstep=pm.bstep, ostep=pm.ostep)
@@ -45,8 +46,8 @@ bal = np.loadtxt(f'{pm.out_path}/balance.dat', unpack=True)
 # Plot fields
 val = 2*pm.ostep
 val = 2*pm.ostep
-out_u = np.load(f'{pm.out_path}/uu_memmap.npy', mmap_mode='r')[pm.ostep*1000] # all uu fields in time
-out_h = np.load(f'{pm.out_path}/hh_memmap.npy', mmap_mode='r')[pm.ostep*1000] # all uu fields in time
+out_u = np.load(f'{pm.out_path}/uu_memmap.npy', mmap_mode='r')[pm.ostep*1000]
+out_h = np.load(f'{pm.out_path}/hh_memmap.npy', mmap_mode='r')[pm.ostep*1000]
 out_hb = np.load(f'{pm.out_path}/hb.npy')
 
 f,axs = plt.subplots(ncols=3)
