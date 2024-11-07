@@ -20,7 +20,7 @@ class SWHD_1D(PseudoSpectral):
         super().__init__(pm)
         self.grid = ps.Grid1D(pm)
         self.iit = pm.iit
-        self.total_steps =  round(self.pm.T/self.pm.dt)
+        self.total_steps =  round(self.pm.T/self.pm.dt) # total time steps
         self.hb_path = pm.hb_path
         try:
             self.hb = np.load(f'{self.hb_path}/hb_memmap.npy', mmap_mode='r')[self.iit-1]  # Access the data at the current iteration and Load hb at current GD iteration
@@ -97,10 +97,10 @@ class SWHD_1D(PseudoSpectral):
     def outs(self, fields, step):
         uu = self.grid.inverse(fields[0])
         # np.save(f'{self.pm.out_path}/uu_{step:04}', uu)
-        self.save_memmap(f'{self.pm.out_path}/uu_memmap.npy', uu, step, self.total_steps, dtype=np.float64)
+        self.save_memmap(f'{self.pm.out_path}/uu_memmap.npy', uu, int(step/self.pm.ostep), int(self.total_steps/self.pm.ostep), dtype=np.float64)
         hh = self.grid.inverse(fields[1])
         # np.save(f'{self.pm.out_path}/hh_{step:04}', hh)
-        self.save_memmap(f'{self.pm.out_path}/hh_memmap.npy', hh, step, self.total_steps, dtype=np.float64)
+        self.save_memmap(f'{self.pm.out_path}/hh_memmap.npy', hh, int(step/self.pm.ostep), int(self.total_steps/self.pm.ostep), dtype=np.float64)
 
     def balance(self, fields, step):
         eng = self.grid.energy(fields)

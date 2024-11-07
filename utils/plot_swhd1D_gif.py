@@ -11,7 +11,7 @@ from matplotlib.lines import Line2D
 from matplotlib.colors import LinearSegmentedColormap
 
 # path where to find parameters
-param_path = 'examples/time_marching_swhd1D_3'
+param_path = 'examples/time_marching_swhd1D_square'
 # Parse JSON into an object with attributes corresponding to dict keys.
 pm = json.load(open(f'{param_path}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 pm.Lx = 2*np.pi*pm.Lx
@@ -62,8 +62,8 @@ def plot_time_lapse(field,
 
 # load frames
 steps = int(pm.T/pm.dt) # total steps of the simulation
-U = [np.load(f'{pm.out_path}/uu_{tidx:04}.npy') for tidx in range(0, steps, pm.plot_step)]
-H = [np.load(f'{pm.out_path}/hh_{tidx:04}.npy') for tidx in range(0, steps, pm.plot_step)]
+U = np.load(f'{pm.out_path}/uu_memmap.npy')[::pm.plot_step]
+H = np.load(f'{pm.out_path}/hh_memmap.npy')[::pm.plot_step]
 
 # plot gifs for u and h and save to out_path
 plot_time_lapse(U ,steps, Lx = pm.Lx , Nx = pm.Nx,
