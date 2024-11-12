@@ -135,7 +135,7 @@ plot_time_lapse(H ,steps, Lx = pm.Lx , Nx = pm.Nx,
                     label = '$h(x,t)$',
                     interval = 200 ,
                     fps = 5 )
-plot_time_lapse_two_fields(H,
+'''plot_time_lapse_two_fields(H,
                                hb,
                                steps,
                                Lx = pm.Lx,
@@ -147,4 +147,4 @@ plot_time_lapse_two_fields(H,
                                label2='$h_b(x)$',
                                limit=False,
                                interval=200,
-                               fps=5)
+                               fps=5)'''

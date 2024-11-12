@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import os
 import pySPEC as ps
 from pySPEC.time_marching import SWHD_1D
-from noise import hb_noise
+from noise import *
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 # Parse JSON into an object with attributes corresponding to dict keys.
@@ -19,19 +19,11 @@ pm.Lx = 2*np.pi*pm.Lx
 # Initialize solver
 grid   = ps.Grid1D(pm)
 
-# Initial conditions
-v1 = 0.00025
-v2 =  0.5
-v3 = 2
-uu = v1 * np.exp(-((grid.xx - np.pi/v3) ** 2) / v2 ** 2)
-
-c1 = 5e-5
-c2 = 0.5
-c3 = 2
-hh = pm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2)
+# create noisy u, h
+uu,hh = uh_noise(pm, grid)
 
 # create noisey hb
-hb = hb_noise(pm = pm, grid= grid)
+hb = hb_noise(pm = pm, grid= grid,  kmin = 0, kmax= 1, A = 0)
 np.save(f'{pm.hb_path}/hb_{pm.iit}.npy', hb)
 np.save(f'{pm.hb_path}/outs/hb.npy', hb) # the fixed, true hb for adjoint loop later
 fields = [uu, hh]
@@ -49,12 +41,12 @@ out_u = np.load(f'{pm.out_path}/uu_memmap.npy', mmap_mode='r')[pm.ostep*1000] # 
 out_h = np.load(f'{pm.out_path}/hh_memmap.npy', mmap_mode='r')[pm.ostep*1000] # all uu fields in time
 out_hb = np.load(f'{pm.out_path}/hb.npy')
 
-f,axs = plt.subplots(ncols=3)
+f,axs = plt.subplots(ncols=3, figsize = (15,3))
 
-axs[0].plot(out_hb , label = 'hb')
+axs[0].plot(out_hb , label = '$h_b$')
 axs[0].legend()
-axs[1].plot(out_u , label = 'u')
+axs[1].plot(out_u , label = '$u$')
 axs[1].legend()
-axs[2].plot(out_h , label = 'h')
+axs[2].plot(out_h , label = '$h$')
 axs[2].legend()
 plt.savefig(f'{pm.out_path}/fields.png')

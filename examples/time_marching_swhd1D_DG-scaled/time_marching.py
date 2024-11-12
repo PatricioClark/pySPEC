@@ -9,7 +9,6 @@ from types import SimpleNamespace
 import os
 import pySPEC as ps
 from pySPEC.time_marching import SWHD_1D
-from noise import hb_noise
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 # Parse JSON into an object with attributes corresponding to dict keys.
@@ -31,7 +30,18 @@ c3 = 2
 hh = pm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2)
 
 # create noisey hb
-hb = hb_noise(pm = pm, grid= grid, ks =  [0], A = 0)
+s0 =  0.1
+s1 =  0.3
+s2 = 1.4
+s3 = 0.05
+s4 = 0.2
+s5 = 0.8
+hb = s0*np.exp(-(grid.xx-np.pi/s2)**2/s1**2) + s3*np.exp(-(grid.xx-np.pi/s5)**2/s4**2)
+
+plt.figure( figsize = (15,5))
+plt.plot(grid.xx , hb , label = '$h_b$')
+plt.legend()
+
 np.save(f'{pm.hb_path}/hb_{pm.iit}.npy', hb)
 np.save(f'{pm.hb_path}/outs/hb.npy', hb) # the fixed, true hb for adjoint loop later
 fields = [uu, hh]
