@@ -61,3 +61,26 @@ def hb_noise(pm, grid):
 
 
     return hb
+
+def uh_noise(pm, grid):
+    Nx =  pm.Nx
+    dx = grid.dx
+
+    # structures of l ~ 400m to 1000m, scaled: 0.02 to 0.05  --> k ~ 100 to 40
+    noisek100uu = noise(grid, kmin = 40 , kmax = 100, Amin = 0.00001, Amax= 0.000025  )
+
+    # structures of l ~ 80m to 100m, scaled: 0.004 to 0.005  --> k ~ 500 to 400
+    noisek500uu = noise(grid, kmin = 400 , kmax = 500, Amin = 0.000001, Amax= 0.0000025  )
+
+    # Initial conditions
+    v1 = 0.00025
+    v2 =  0.5
+    v3 = 2
+    uu = v1 * np.exp(-((grid.xx - np.pi/v3) ** 2) / v2 ** 2) + noisek100uu + noisek500uu
+
+    c1 = 5e-5
+    c2 = 0.5
+    c3 = 2
+    hh = pm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2)
+
+    return uu,hh
