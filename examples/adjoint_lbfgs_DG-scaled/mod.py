@@ -131,13 +131,13 @@ def plot_fields(fpm,hb,
 
 def plot_loss(fpm, loss):
     plt.figure()
-    plt.plot(loss[0], loss[1], label = '$(u-\hat{u})^2$')
-    plt.plot(loss[0], loss[2], label = '$(h- \hat{h})^2$')
+    plt.loglog(loss[0], loss[1], label = '$(u-\hat{u})^2$')
+    plt.loglog(loss[0], loss[2], label = '$(h- \hat{h})^2$')
     plt.legend()
     plt.savefig(f'{fpm.hb_path}/loss.png')
 
     val = np.loadtxt(f'{fpm.hb_path}/hb_val.dat', unpack=True)
     plt.figure()
-    plt.plot(val[0], val[1], label = '$(hb-\hat{hb})^2$')
+    plt.loglog(val[0], val[1], label = '$(hb-\hat{hb})^2$')
     plt.legend()
     plt.savefig(f'{fpm.hb_path}/hb_val.png')

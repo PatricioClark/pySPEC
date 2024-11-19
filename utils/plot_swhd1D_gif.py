@@ -11,7 +11,7 @@ from matplotlib.lines import Line2D
 from matplotlib.colors import LinearSegmentedColormap
 
 # path where to find parameters
-param_path = 'examples/time_marching_swhd1D_DG_uh_noise-scaled'
+param_path = 'examples/time_marching_swhd1D_DG-scaled'
 # Parse JSON into an object with attributes corresponding to dict keys.
 pm = json.load(open(f'{param_path}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 pm.Lx = 2*np.pi*pm.Lx

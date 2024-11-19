@@ -22,6 +22,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         super().__init__(pm)
         self.grid = ps.Grid1D(pm)
         self.iit = pm.iit
+        self.sample_rate = pm.sample_rate
         self.total_steps =  round(self.pm.T/self.pm.dt)
         self.data_path = pm.data_path
         self.field_path = pm.field_path
@@ -36,9 +37,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
             self.hhs =  np.load(f'{self.field_path}/hh_memmap.npy', mmap_mode='r') # all hh fields in time
         except:
             self.hhs = None
-        self.uums =  np.load(f'{self.data_path}/uu_memmap.npy', mmap_mode='r') # all uu measurements in time
-        self.hhms=  np.load(f'{self.data_path}/hh_memmap.npy', mmap_mode='r') # all hh measurements in time
-
+        self.uums = self.sample_memmap(data_path = self.data_path, filename = 'uu_memmap.npy', sample_rate = self.sample_rate)
+        self.hhms = self.sample_memmap(data_path = self.data_path, filename = 'hh_memmap.npy', sample_rate = self.sample_rate)
 
     def rkstep(self, fields, prev, oo):
         # Unpack
@@ -153,6 +153,29 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         # Write new data into the current iteration slot
         fp[step] = new_data
         del fp  # Force the file to flush and close
+
+    def sample_memmap(self, data_path, filename, dt_rate = 250, sample_rate=0.5):
+        '''Randomly replaces elements in the field with zeros'''
+
+        # Load the memory-mapped field
+        field = np.load(f'{data_path}/{filename}', mmap_mode='r')  # read-only
+
+        # Create a copy to avoid modifying the original
+        modified_data = np.zeros_like(field)
+
+        # Identify indices to keep based on the time interval
+        keep_indices = np.arange(0, field.shape[0], dt_rate)
+        # Apply the time-interval-based filter
+        modified_data[keep_indices] = field[keep_indices]
+
+        # Randomly choose spatial indices to replace (non-buoyed spaces)
+        random_indices = np.random.choice(field.shape[-1], size=int(field.shape[-1] * (1 - sample_rate)), replace=False)
+        # Replace those indices with zero in the copy
+        modified_data[:,  random_indices] = 0
+
+        return modified_data
+
+
 
     def outs(self, fields, step):
         uu_ = self.grid.inverse(fields[0])
