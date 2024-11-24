@@ -30,7 +30,7 @@ class KolmogorovFlow(PseudoSpectral):
         self.fy = np.zeros_like(self.fx, dtype=complex)
         self.fx, self.fy = self.grid.inc_proj([self.fx, self.fy])
 
-    def rkstep(self, fields, prev, oo):
+    def rkstep(self, fields, prev, oo, dt):
         # Unpack
         fu, fv = fields
         fup, fvp = prev
@@ -50,13 +50,13 @@ class KolmogorovFlow(PseudoSpectral):
         gx, gy = self.grid.inc_proj([gx, gy])
 
         # Equations
-        fu = fup + (self.grid.dt/oo) * (
+        fu = fup + (dt/oo) * (
             - gx
             - self.pm.nu * self.grid.k2 * fu 
             + self.fx
             )
 
-        fv = fvp + (self.grid.dt/oo) * (
+        fv = fvp + (dt/oo) * (
             - gy
             - self.pm.nu * self.grid.k2 * fv 
             + self.fy
@@ -70,17 +70,36 @@ class KolmogorovFlow(PseudoSpectral):
 
         return [fu, fv]
 
-    def outs(self, fields, step):
+    def injection(self, fields, forcing):
+        return self.grid.avg(self.grid.inner(fields, forcing))
+
+    def outs(self, fields, step, path):
         uu = self.grid.inverse(fields[0])
         vv = self.grid.inverse(fields[1])
-        np.save(f'uu_{step:04}', uu)
-        np.save(f'vv_{step:04}', vv)
+        np.save(f'{path}uu_{step:0{self.pm.ext}}', uu)
+        np.save(f'{path}vv_{step:0{self.pm.ext}}', vv)
 
-    def balance(self, fields, step):
+    def balance(self, fields, step, bpath):
         eng = self.grid.energy(fields)
-        bal = [f'{self.pm.dt*step:.4e}', f'{eng:.6e}']
-        with open('balance.dat', 'a') as output:
+        ens = self.grid.enstrophy(fields)
+        dis = - 2 * self.pm.nu * ens
+        inj = self.injection(fields, [self.fx, self.fy])
+
+        bal = [f'{self.pm.dt*step:.4e}', f'{eng:.6e}', f'{dis:.6e}', f'{inj:.6e}']
+        with open(f'{bpath}balance.dat', 'a') as output:
             print(*bal, file=output)
+
+    def load_fields(self, step, path):
+        uu = np.load(f'{path}uu_{step:0{self.pm.ext}}.npy')
+        vv = np.load(f'{path}vv_{step:0{self.pm.ext}}.npy')
+        return [uu, vv]
+
+    def oz(self, fields):
+        ''' Computes vorticity field '''
+        fu, fv = [self.grid.forward(ff) for ff in fields]
+        uy = self.grid.inverse(self.grid.deriv(fu, self.grid.ky))
+        vx = self.grid.inverse(self.grid.deriv(fv, self.grid.kx))
+        return uy - vx
 
     # def flatten_fields(self, fields):
     #     ''' Transforms uu, vv, to a 1d variable X (if vort saves oz)'''
