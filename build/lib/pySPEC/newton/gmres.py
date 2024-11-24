@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import scipy
 import time
 
-def GMRES(apply_A, b, i_newt, pm):
+def GMRES(apply_A, b, i_newt, pmN):
     """
     Performs Generalized Minimal Residues to find x that approximates the solution to Ax=b. 
     
@@ -25,9 +25,9 @@ def GMRES(apply_A, b, i_newt, pm):
     r = b
     r_norm = b_norm = np.linalg.norm(r)
     e = [1.] #r_norm/b_norm
-    n = pm.N_gmres
+    n = pmN.N_gmres
 
-    if pm.fvort: #X is complex
+    if pmN.cmplx: #X is complex
         #Initialize sine and cosine Givens 1d vectors. This allows the algorithm to be O(k) instead of O(k^2)
         sn = np.zeros(n,dtype='complex_')
         cs = np.zeros(n,dtype='complex_')
@@ -64,7 +64,7 @@ def GMRES(apply_A, b, i_newt, pm):
     #In each iteration a new column of Q and H is computed.
     #The H column is then modified using Givens matrices so that H becomes a triangular matrix R
     for k in range(1,n):
-        Q[:,k], H[:k+1,k-1] = arnoldi_step(apply_A, Q, k, pm) #Perform Arnoldi iteration to add column to Q (m entries) and to H (k entries)  
+        Q[:,k], H[:k+1,k-1] = arnoldi_step(apply_A, Q, k, pmN) #Perform Arnoldi iteration to add column to Q (m entries) and to H (k entries)  
         
         H[:k+1,k-1], cs[k-1],sn[k-1] = apply_givens_rotation(H[:k+1,k-1],cs,sn,k) #eliminate the last element in H ith row and update the rotation matrix
 
@@ -77,28 +77,26 @@ def GMRES(apply_A, b, i_newt, pm):
 
         #save the error
         e.append(error)
-        with open(f'prints/error_gmres/iter{i_newt}.txt', 'a') as file:
+        with open(f'prints/error_gmres/iN{i_newt:02}.txt', 'a') as file:
             file.write(f'{k},{error}\n')
 
-        if error<pm.tol_gmres:
+        if error<pmN.tol_gmres:
             break
 
-    if pm.hook or pm.ls:
-        return H, beta, Q, k
-    else:        
+    if not pmN.glob_method:        
         #calculate result by solving a triangular system of equations H*y=beta
-        y = back_substitution(H[:k,:k], beta[:k], pm)
+        y = backsub(H[:k,:k], beta[:k], pmN)
         x = Q[:,:k]@y
+        return x[:-1], x[-1] #TODO: Not implemented in upos.py
+    else:
+        return H[:k,:k], beta[:k], Q[:,:k]
 
-        return x[:-1], x[-1]
 
-
-def arnoldi_step(apply_A, Q, k, pm):
-    """Performs k_th Arnoldi iteration of Krylov subspace spanned by <r, Ar, A^2 r,.., A^(k-1) r> 
-    """
+def arnoldi_step(apply_A, Q, k, pmN):
+    """Performs k_th Arnoldi iteration of Krylov subspace spanned by <r, Ar, A^2 r,.., A^(k-1) r>"""
     v = apply_A(Q[:-2,k-1],Q[-2,k-1],Q[-1,k-1]) #generate candidate vector
 
-    if pm.fvort: #X is complex    
+    if pmN.cmplx: #X is complex    
         h = np.zeros(k+1,dtype='complex_')
     else: #X is real
         h = np.zeros(k+1)
@@ -127,15 +125,15 @@ def apply_givens_rotation(h, cs, sn, k):
     return h, cs_k, sn_k
 
 
-def back_substitution(R, b, pm):
+def backsub(R, b, pmN):
     """
     Solves the equation Rx = b, where R is a square right triangular matrix
     """
     n = len(b)
-    if pm.fvort: #X is complex    
-        x = np.zeros_like(b,dtype='complex_')
+    if pmN.cmplx: #X is complex
+        x = np.zeros(n,dtype='complex_')
     else: #X is real
-        x = np.zeros_like(b)
+        x = np.zeros(n)
     
     for i in range(n-1, -1, -1):
         aux = 0

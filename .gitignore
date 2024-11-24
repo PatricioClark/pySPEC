@@ -1,4 +1,7 @@
 output
 figures
 params.json
+examples/test_newton_kolmog/balance/
+examples/test_newton_kolmog/output/
+examples/test_newton_kolmog/prints/
 **/__pycache__/
