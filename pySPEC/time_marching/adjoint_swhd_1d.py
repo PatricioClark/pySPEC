@@ -23,6 +23,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.grid = ps.Grid1D(pm)
         self.iit = pm.iit
         self.sample_rate = pm.sample_rate
+        self.dt_step = pm.dt_step
         self.total_steps =  round(self.pm.T/self.pm.dt)
         self.data_path = pm.data_path
         self.field_path = pm.field_path
@@ -37,8 +38,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
             self.hhs =  np.load(f'{self.field_path}/hh_memmap.npy', mmap_mode='r') # all hh fields in time
         except:
             self.hhs = None
-        self.uums = self.sample_memmap(data_path = self.data_path, filename = 'uu_memmap.npy', sample_rate = self.sample_rate)
-        self.hhms = self.sample_memmap(data_path = self.data_path, filename = 'hh_memmap.npy', sample_rate = self.sample_rate)
+        self.uums, self.data_indexes = self.sample_memmap(data_path = self.data_path, filename = 'uu_memmap.npy',dt_step = self.dt_step, sample_rate = self.sample_rate)
+        self.hhms, self.data_indexes = self.sample_memmap(data_path = self.data_path, filename = 'hh_memmap.npy',dt_step = self.dt_step, sample_rate = self.sample_rate)
 
     def rkstep(self, fields, prev, oo):
         # Unpack
@@ -58,18 +59,30 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         uu = self.uus[back_step]
         # hh = np.load(f'{self.field_path}/hh_{back_step:04}.npy') # h field at current time step
         hh = self.hhs[back_step]
+
+        # get hb
         hb = self.hb
+
+        # measurements
+        uum = self.uums[back_step]
+        hhm = self.hhms[back_step]
+
+        # only include forcing terms where measurements are taken
+        if back_step%self.dt_step == 0:
+            uuforcing = uu -uum
+            hhforcing = uu -hhm
+            uuforcing[self.data_indexes] = 0 # force all non-measured indexes to zero
+            hhforcing[self.data_indexes] = 0 # force all non-measured indexes to zero
+        else:
+            uuforcing = np.zeros_like(hh)
+            hhforcing = np.zeros_like(uu)
+
+        fuuforcing = self.grid.forward(uuforcing)
+        fhhforcing = self.grid.forward(hhforcing)
 
         fu  = self.grid.forward(uu)
         fux = self.grid.deriv(fu, self.grid.kx)
         ux = self.grid.inverse(fux)
-        fh  = self.grid.forward(hh)
-        fhb = self.grid.forward(hb)
-
-        # fum = self.grid.forward(np.load(f'{self.data_path}/uu_{back_step:04}.npy')) # u measurments at current time step
-        fum = self.grid.forward(self.uums[back_step])
-        # fhm = self.grid.forward(np.load(f'{self.data_path}/hh_{back_step:04}.npy')) # h measurements at current time step
-        fhm = self.grid.forward(self.hhms[back_step])
 
         # calculate terms
         uu_ = self.grid.inverse(fu_)
@@ -86,9 +99,9 @@ class Adjoint_SWHD_1D(PseudoSpectral):
 
         fh_hb_hx_ = self.grid.forward((hh-hb)*hx_)
 
-        # backwards integration in time
-        fu_ = fu_p - (self.grid.dt/oo) * (2*(fu-fum) - fu_ux_ - fu_u_x - fh_hb_hx_)
-        fh_ = fh_p - (self.grid.dt/oo) * (2*(fh-fhm) - self.pm.g*fux_ - fu_hx_)
+        # backwards integration in time, with sampled forcing terms
+        fu_ = fu_p - (self.grid.dt/oo) * (2*fuuforcing - fu_ux_ - fu_u_x - fh_hb_hx_)
+        fh_ = fh_p - (self.grid.dt/oo) * (2*fhhforcing - self.pm.g*fux_ - fu_hx_)
 
         # save zero modes for debugging
         # np.save(f'{self.pm.out_path}/adjoint_zero_modes_{step:04}', np.array([fu_[self.grid.zero_mode], fh_[self.grid.zero_mode]]))
@@ -154,7 +167,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         fp[step] = new_data
         del fp  # Force the file to flush and close
 
-    def sample_memmap(self, data_path, filename, dt_rate = 250, sample_rate=0.5):
+    def sample_memmap(self, data_path, filename, dt_step = 250, sample_rate=0.5):
         '''Randomly replaces elements in the field with zeros'''
 
         # Load the memory-mapped field
@@ -164,7 +177,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         modified_data = np.zeros_like(field)
 
         # Identify indices to keep based on the time interval
-        keep_indices = np.arange(0, field.shape[0], dt_rate)
+        keep_indices = np.arange(0, field.shape[0], dt_step)
         # Apply the time-interval-based filter
         modified_data[keep_indices] = field[keep_indices]
 
@@ -173,7 +186,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         # Replace those indices with zero in the copy
         modified_data[:,  random_indices] = 0
 
-        return modified_data
+        return modified_data, random_indices
 
 
 
