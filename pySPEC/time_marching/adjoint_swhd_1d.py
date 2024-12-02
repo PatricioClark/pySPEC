@@ -39,8 +39,22 @@ class Adjoint_SWHD_1D(PseudoSpectral):
             self.hhs =  np.load(f'{self.field_path}/hh_memmap.npy', mmap_mode='r') # all hh fields in time
         except:
             self.hhs = None
-        self.uums, self.non_forced_indexes = self.sample_memmap(data_path = self.data_path, filename = 'uu_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
-        self.hhms, self.non_forced_indexes = self.sample_memmap(data_path = self.data_path, filename = 'hh_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
+        self.uums, self.uusparse_time, self.uusparse_space = self.sample_memmap(data_path = self.data_path, filename = 'uu_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
+        self.hhms, self.hhsparse_time, self.hhsparse_space = self.sample_memmap(data_path = self.data_path, filename = 'hh_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
+        # make sparse forcing terms
+        uus_sparse_time = np.zeros_like(self.uums)
+        uus_sparse_time[self.uusparse_time,:] = self.uus[self.uusparse_time,:]
+        uus_sparse = np.zeros_like(self.uums)
+        uus_sparse[:,self.uusparse_space] = uus_sparse_time[:,self.uusparse_space]
+
+        hhs_sparse_time = np.zeros_like(self.hhms)
+        hhs_sparse_time[self.hhsparse_time,:] = self.hhs[self.hhsparse_time,:]
+        hhs_sparse = np.zeros_like(self.hhms)
+        hhs_sparse[:,self.hhsparse_space] = hhs_sparse_time[:,self.hhsparse_space]
+
+
+        self.uuforcings = uus_sparse -self.uums
+        self.hhforcings = hhs_sparse -self.hhms
 
     def rkstep(self, fields, prev, oo):
         # Unpack
@@ -68,15 +82,9 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         uum = self.uums[back_step]
         hhm = self.hhms[back_step]
 
-        # only include forcing terms where measurements are taken
-        if back_step%self.dt_step == 0:
-            uuforcing = uu -uum
-            hhforcing = uu -hhm
-            uuforcing[self.non_forced_indexes] = 0 # force all non-measured indexes to zero
-            hhforcing[self.non_forced_indexes] = 0 # force all non-measured indexes to zero
-        else:
-            uuforcing = np.zeros_like(hh)
-            hhforcing = np.zeros_like(uu)
+        # sparse forcing terms
+        uuforcing = self.uuforcings[back_step]
+        hhforcing = self.hhforcings[back_step]
 
         fuuforcing = self.grid.forward(uuforcing)
         fhhforcing = self.grid.forward(hhforcing)
@@ -193,7 +201,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         # Identify indices to keep based on the space interval
         space_indices = np.arange(0, field.shape[-1], dx_step)
         modified_data[:,space_indices] = modified_data_[:,space_indices]
-        return modified_data, space_indices
+        return modified_data, time_indices, space_indices
 
 
 
