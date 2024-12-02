@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import scipy
 import time
 
-def GMRES(apply_A, b, i_newt, pmN):
+def GMRES(apply_A, b, iN, pmN):
     """
     Performs Generalized Minimal Residues to find x that approximates the solution to Ax=b. 
     
@@ -77,7 +77,7 @@ def GMRES(apply_A, b, i_newt, pmN):
 
         #save the error
         e.append(error)
-        with open(f'prints/error_gmres/iN{i_newt:02}.txt', 'a') as file:
+        with open(f'prints/error_gmres/iN{iN:02}.txt', 'a') as file:
             file.write(f'{k},{error}\n')
 
         if error<pmN.tol_gmres:

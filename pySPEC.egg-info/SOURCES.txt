@@ -16,4 +16,5 @@ pySPEC/time_marching/kolmogorov_flow.py
 pySPEC/time_marching/kuramoto_sivashinsky.py
 pySPEC/time_marching/pseudospectral.py
 pySPEC/time_marching/solver.py
+pySPEC/time_marching/specter.py
 pySPEC/time_marching/wrapper.py

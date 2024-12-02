@@ -44,10 +44,6 @@ class Grid1D:
         ''' First derivative in ki direction '''
         return 1.0j*ki*ui
 
-    def avg(self, ui):
-        ''' Mean in Fourier space '''
-        return 2.0 * self.norm * np.sum(ui)
-
     @staticmethod
     def inner(a, b):
         ''' Inner product '''
@@ -58,7 +54,9 @@ class Grid1D:
 
     def avg(self, ui):
         ''' Mean in Fourier space '''
-        ui[:,1:] *= 2 # Factor 2 for negative frequencies
+        # Create a mask for the last index (where rfft halves size) being greater than 0
+        mask = np.indices(ui.shape)[-1] > 0
+        ui[mask] *= 2 # Factor 2 to account for negative frequencies
         return self.norm * np.sum(ui)
 
     def energy(self, fields):
@@ -141,9 +139,32 @@ class Grid2D(Grid1D):
         fields = [self.inverse(ff) for ff in f]
         return fields
 
-
     def inc_proj(self, fields):
         ''' Project onto solenoidal modes '''
         fu = fields[0]
         fv = fields[1]
         return self.pxx*fu + self.pxy*fv, self.pxy*fu + self.pyy*fv
+
+class Grid2D_wrap(Grid1D):
+    ''' 2D grid for SPECTER solver with non periodic boundary conditions '''
+    def __init__(self, pm):
+        super().__init__(pm)
+        zi, dz = np.linspace(0, pm.Lz, pm.Nz, endpoint=False, retstep=True)
+        kx, zz = np.meshgrid(self.kx, zi, indexing='ij')
+
+        self.zi = zi
+        self.dz = dz
+        self.zz = zz
+        self.kx = kx
+
+        self.N = pm.Nx*pm.Ny*pm.Nz # Ny is equal to 1
+        self.shape = (pm.Nx,pm.Ny,pm.Nz)
+
+    def forward(self, ui):
+        ''' Forward Fourier transform '''
+        return np.fft.rfft(ui[:,0,:], axis = 0) # only 1 "y" mode
+
+    def inverse(self, ui):
+        ''' Invserse Fourier transform '''
+        ui =  np.fft.irfft(ui, axis = 0).real
+        return ui.reshape(self.shape)

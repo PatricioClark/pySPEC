@@ -19,7 +19,7 @@ class NewtonSolver(abc.ABC):
         '''
         self.pmN = pmN
         self.solver = solver
-        # self.grid = solver.grid # Podría no usar un grid
+        self.grid = solver.grid # Podría no usar un grid
 
     # @abc.abstractmethod
     # def F(self, X):

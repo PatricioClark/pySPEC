@@ -15,7 +15,15 @@ class Wrapper(Solver, abc.ABC):
     def __init__(self, pm):
         super().__init__(pm)
 
-    def evolve(self, fields, T, bstep=None, sstep=None, ostep=None):
+    @abc.abstractmethod
+    def evolve(self, fields, T, bstep=None, ostep=None, sstep=None, bpath = '', opath = '', spath = ''):
         ''' Evolves velocity fields to time T  by calling GHOST/SPECTER'''
+        pass
 
-        return []
+    @abc.abstractmethod
+    def write_fields(self, fields, *args):
+        pass
+
+    @abc.abstractmethod
+    def ch_params(self, T, *args):
+        pass

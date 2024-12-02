@@ -101,24 +101,8 @@ class KolmogorovFlow(PseudoSpectral):
         vx = self.grid.inverse(self.grid.deriv(fv, self.grid.kx))
         return uy - vx
 
-    # def flatten_fields(self, fields):
-    #     ''' Transforms uu, vv, to a 1d variable X (if vort saves oz)'''
-    #     uu, vv = fields
-    #     if not (self.pm.vort_X or self.pm.fvort):
-    #         return np.concatenate((uu.flatten(), vv.flatten()))
-    #     else:
-    #         oz = vort(uu, vv, self.pm, self.grid)
-    #         return oz.flatten()
-    #
-    # def unflatten_fields(self, X, pm, grid):
-    #     ''' Transforms 1d variable X to uu,vv '''
-    #     if not (pm.vort_X or pm.fvort):
-    #         ll = len(X)//2
-    #         uu = X[:ll].reshape((pm.Nx, pm.Ny))
-    #         vv = X[ll:].reshape((pm.Nx, pm.Ny))
-    #         return uu, vv
-    #     else:
-    #         oz = X.reshape((pm.Nx, pm.Ny))
-    #         uu, vv = inv_vort(oz, pm, grid)
-    #         return uu, vv
-    #
+    def inc_proj(self, fields):
+        fields = [self.grid.forward(ff) for ff in fields]
+        inc_f = self.grid.inc_proj(fields)         
+        fields = [self.grid.inverse(ff) for ff in inc_f]
+        return fields

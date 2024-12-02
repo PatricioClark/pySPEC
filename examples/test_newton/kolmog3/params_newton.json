@@ -1,0 +1,19 @@
+{
+    "T_guess": 5.8,
+    "sx_guess": 0.0,
+    "restart": 0,
+    "input": "input/",
+    "start_idx": 0,
+    "N_newt": 200,
+    "N_gmres": 50,
+    "N_hook": 25,
+    "tol_newt": 1e-10,
+    "tol_gmres": 1e-5,
+    "glob_method": "hookstep",
+    "c": 0.0,
+    "reduc_reg": 0.5,
+    "mu0": 1e-3,
+    "verbose": true,
+    "sol_project": true,
+    "cmplx": false
+}

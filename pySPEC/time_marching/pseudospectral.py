@@ -46,7 +46,6 @@ class PseudoSpectral(Solver, abc.ABC):
 
         # Inverse transform
         fields = [self.grid.inverse(ff) for ff in fields]
-
         return fields
 
     @abc.abstractmethod
