@@ -22,8 +22,9 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         super().__init__(pm)
         self.grid = ps.Grid1D(pm)
         self.iit = pm.iit
-        self.sample_rate = pm.sample_rate
+        # self.sample_rate = pm.sample_rate
         self.dt_step = pm.dt_step
+        self.dx_step = pm.dx_step
         self.total_steps =  round(self.pm.T/self.pm.dt)
         self.data_path = pm.data_path
         self.field_path = pm.field_path
@@ -38,8 +39,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
             self.hhs =  np.load(f'{self.field_path}/hh_memmap.npy', mmap_mode='r') # all hh fields in time
         except:
             self.hhs = None
-        self.uums, self.data_indexes = self.sample_memmap(data_path = self.data_path, filename = 'uu_memmap.npy',dt_step = self.dt_step, sample_rate = self.sample_rate)
-        self.hhms, self.data_indexes = self.sample_memmap(data_path = self.data_path, filename = 'hh_memmap.npy',dt_step = self.dt_step, sample_rate = self.sample_rate)
+        self.uums, self.non_forced_indexes = self.sample_memmap(data_path = self.data_path, filename = 'uu_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
+        self.hhms, self.non_forced_indexes = self.sample_memmap(data_path = self.data_path, filename = 'hh_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
 
     def rkstep(self, fields, prev, oo):
         # Unpack
@@ -71,8 +72,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         if back_step%self.dt_step == 0:
             uuforcing = uu -uum
             hhforcing = uu -hhm
-            uuforcing[self.data_indexes] = 0 # force all non-measured indexes to zero
-            hhforcing[self.data_indexes] = 0 # force all non-measured indexes to zero
+            uuforcing[self.non_forced_indexes] = 0 # force all non-measured indexes to zero
+            hhforcing[self.non_forced_indexes] = 0 # force all non-measured indexes to zero
         else:
             uuforcing = np.zeros_like(hh)
             hhforcing = np.zeros_like(uu)
@@ -167,26 +168,32 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         fp[step] = new_data
         del fp  # Force the file to flush and close
 
-    def sample_memmap(self, data_path, filename, dt_step = 250, sample_rate=0.5):
+    def sample_memmap(self, data_path, filename, dt_step = 1, dx_step = 1):
         '''Randomly replaces elements in the field with zeros'''
 
         # Load the memory-mapped field
-        field = np.load(f'{data_path}/{filename}', mmap_mode='r')  # read-only
+        field = np.load(f'{data_path}/{filename}', mmap_mode='r')[:self.total_steps, :]  # read-only measurements until time T
 
         # Create a copy to avoid modifying the original
-        modified_data = np.zeros_like(field)
+        modified_data_ = np.zeros_like(field)
 
         # Identify indices to keep based on the time interval
-        keep_indices = np.arange(0, field.shape[0], dt_step)
+        time_indices = np.arange(0, field.shape[0], dt_step)
         # Apply the time-interval-based filter
-        modified_data[keep_indices] = field[keep_indices]
+        modified_data_[time_indices] = field[time_indices]
 
-        # Randomly choose spatial indices to replace (non-buoyed spaces)
-        random_indices = np.random.choice(field.shape[-1], size=int(field.shape[-1] * (1 - sample_rate)), replace=False)
+        # this is the pinn-like random sampling of buoys
+        # Randomly choose spatial indices to replace with zero (non-buoyed spaces)
+        # random_indices = np.random.choice(field.shape[-1], size=int(field.shape[-1] * (1 - sample_rate)), replace=False)
         # Replace those indices with zero in the copy
-        modified_data[:,  random_indices] = 0
+        # modified_data[:,  zero_indices] = 0
 
-        return modified_data, random_indices
+        # Create another copy to avoid modifying the original
+        modified_data = np.zeros_like(modified_data_)
+        # Identify indices to keep based on the space interval
+        space_indices = np.arange(0, field.shape[-1], dx_step)
+        modified_data[:,space_indices] = modified_data_[:,space_indices]
+        return modified_data, space_indices
 
 
 
