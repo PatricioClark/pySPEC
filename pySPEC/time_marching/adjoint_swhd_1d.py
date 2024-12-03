@@ -42,17 +42,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.uums, self.uusparse_time, self.uusparse_space = self.sample_memmap(data_path = self.data_path, filename = 'uu_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
         self.hhms, self.hhsparse_time, self.hhsparse_space = self.sample_memmap(data_path = self.data_path, filename = 'hh_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
         # make sparse forcing terms
-        uus_sparse_time = np.zeros_like(self.uums)
-        uus_sparse_time[self.uusparse_time,:] = self.uus[self.uusparse_time,:]
-        uus_sparse = np.zeros_like(self.uums)
-        uus_sparse[:,self.uusparse_space] = uus_sparse_time[:,self.uusparse_space]
-
-        hhs_sparse_time = np.zeros_like(self.hhms)
-        hhs_sparse_time[self.hhsparse_time,:] = self.hhs[self.hhsparse_time,:]
-        hhs_sparse = np.zeros_like(self.hhms)
-        hhs_sparse[:,self.hhsparse_space] = hhs_sparse_time[:,self.hhsparse_space]
-
-
+        uus_sparse, sparse_time, sparse_space = self.sample_memmap(data_path = self.field_path, filename = 'uu_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
+        hhs_sparse, sparse_time, sparse_space = self.sample_memmap(data_path = self.field_path, filename = 'hh_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
         self.uuforcings = uus_sparse -self.uums
         self.hhforcings = hhs_sparse -self.hhms
 
@@ -177,7 +168,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         del fp  # Force the file to flush and close
 
     def sample_memmap(self, data_path, filename, dt_step = 1, dx_step = 1):
-        '''Randomly replaces elements in the field with zeros'''
+        '''returns sparse space-time measurements given dt and dx'''
 
         # Load the memory-mapped field
         field = np.load(f'{data_path}/{filename}', mmap_mode='r')[:self.total_steps, :]  # read-only measurements until time T
