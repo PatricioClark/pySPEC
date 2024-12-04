@@ -89,7 +89,7 @@ class KolmogorovFlow(PseudoSpectral):
         with open(f'{bpath}balance.dat', 'a') as output:
             print(*bal, file=output)
 
-    def load_fields(self, step, path):
+    def load_fields(self, path, step):
         uu = np.load(f'{path}uu_{step:0{self.pm.ext}}.npy')
         vv = np.load(f'{path}vv_{step:0{self.pm.ext}}.npy')
         return [uu, vv]

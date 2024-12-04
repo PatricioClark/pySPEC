@@ -4,32 +4,42 @@ import os
 import numpy as np
 
 class UPO(NewtonSolver):
-    def __init__(self, pm, pmN, solver):
-        super().__init__(pmN, solver)
-        self.pm = pm
+    def __init__(self, pm, solver):
+        super().__init__(pm, solver)
 
     def load_ic(self):
         ''' Load initial conditions '''
-        if not self.pmN.restart:
+        if not self.pm.restart:
             # Start Newton Solver from initial guess
-            fields = self.solver.load_fields(self.pmN.input, self.pmN.start_idx)
-            T, sx = self.pmN.T_guess, self.pmN.sx_guess
+            fields = self.solver.load_fields(self.pm.input, self.pm.start_idx)
+            
+            T, sx = self.pm.T, self.pm.sx
             # Create directories
             self.mkdirs()
             self.write_header()
         else:
             # Restart Newton Solver from last iteration
-            restart_path = f'output/iN{self.pmN.restart:02}/'
+            restart_path = f'output/iN{self.pm.restart:02}/'
             fields = self.solver.load_fields(restart_path, 0) 
-            T, sx = self.get_restart_values(self.pmN.restart)
-        return fields, sx, T
+            T, sx = self.get_restart_values(self.pm.restart)
+        
+        U = self.flatten(fields)
+        if self.pm.sx is not None:
+            X = np.append(U, [T, sx])
+        else:
+            X = np.append(U, T)
+        return X
+
 
     def get_restart_values(self, restart):
         ''' Get values from last Newton iteration of T and sx from solver.txt '''
         fname = 'prints/solver.txt'
         iters,T,sx = np.loadtxt(fname, delimiter = ',', skiprows = 1, unpack = True, usecols = (0,2,3))
         idx_restart = np.argwhere(iters==restart)[0][0] #in case more than 1 restart is needed find row with last iter
-        return T[idx_restart], sx[idx_restart]
+        if self.pm.sx is not None:
+            return T[idx_restart], sx[idx_restart]
+        else:
+            return T[idx_restart], None
 
     def flatten(self, fields):
         '''Flattens fields for Newton-GMRes solver'''
@@ -77,7 +87,10 @@ class UPO(NewtonSolver):
     def form_b(self, U, UT):
         "Form RHS of extended Newton system. UT is evolved and translated flattened field"
         b = U - UT
-        return np.append(b, [0., 0.])
+        if self.pm.sx is not None:
+            return np.append(b, [0., 0.])
+        else:
+            return np.append(b, 0.)
 
     def norm(self, U):
         return np.linalg.norm(U)
@@ -85,15 +98,22 @@ class UPO(NewtonSolver):
     def update_A(self, X, iN):
         '''Creates (extended) Jacobian matrix to be applied to U throughout GMRes'''
         # Compute variables and derivatives used throughout gmres iterations
-        U, sx, T = X[:-2], X[-2], X[-1]
+        if self.pm.sx is not None:
+            U, T, sx = X[:-2], X[-2], X[-1]
+        else:
+            U, T = X[:-1], X[-1]
 
         # Evolve fields and save output
         self.mkdirs_iN(iN-1) # save output and bal from previous iN
         UT = self.evolve(U, T, save = True, iN = iN-1)
-        UT = self.translate(UT, sx)
 
-        dUT_ds = self.deriv_U(UT)
-        dU_ds = self.deriv_U(U)
+        if self.pm.sx is not None:
+            UT = self.translate(UT, sx)
+
+            dUT_ds = self.deriv_U(UT)
+            dU_ds = self.deriv_U(U)
+        else:
+            dUT_ds = dU_ds = np.zeros_like(U)
 
         dUT_dT = self.evolve(UT, self.pm.dt)
         dUT_dT = (dUT_dT - UT)/self.pm.dt
@@ -101,16 +121,23 @@ class UPO(NewtonSolver):
         dU_dt = self.evolve(U, self.pm.dt)
         dU_dt = (dU_dt - U)/self.pm.dt
 
-        def apply_A(dU, ds, dT):
+        def apply_A(dX):
             ''' Applies A matrix to vector (dU,ds,dT)^t  '''        
+            if self.pm.sx is not None:
+                dU, dT, ds = dX[:-2], dX[-2], dX[-1]
+            else:
+                dU, dT, ds = dX[:-1], dX[-1], 0.
+
             epsilon = 1e-7*self.norm(U)/self.norm(dU)
 
             U_pert = U + epsilon*dU
-            if self.pmN.sp1:
+            if self.pm.sp1:
                 U_pert = self.sol_project(U_pert)
 
             dUT_dU = self.evolve(U_pert, T)
-            dUT_dU = (self.translate(dUT_dU,sx) - UT)/epsilon
+            if self.pm.sx is not None:
+                dUT_dU = self.translate(dUT_dU,sx)    
+            dUT_dU = (dUT_dU - UT)/epsilon
 
             Tx_proj = np.dot(dU_ds.conj(), dU).real
             t_proj = np.dot(dU_dt.conj(), dU).real
@@ -121,20 +148,23 @@ class UPO(NewtonSolver):
 
             # LHS of extended Newton system
             LHS = dUT_dU - dU + dUT_ds*ds + dUT_dT*dT
-            return np.append(LHS, [Tx_proj, t_proj])
+            if self.pm.sx is not None:
+                return np.append(LHS, [t_proj, Tx_proj])
+            else:
+                return np.append(LHS, t_proj)
 
         return apply_A, UT
 
-    def iterate(self, fields, sx, T):            
+    def iterate(self, X):            
         '''Iterates Newton-GMRes solver until convergence'''
-        # Flatten fields
-        U = self.flatten(fields)
-        X = np.append(U, [sx, T])
-
-        for iN in range(self.pmN.restart+1, self.pmN.N_newt):
+        for iN in range(self.pm.restart+1, self.pm.N_newt):
             # Unpack X
-            U, sx, T = X[:-2], X[-2], X[-1]
-            # Calculate A matrix for newton iterationw
+            if self.pm.sx is not None:
+                U, T, sx = X[:-2], X[-2], X[-1]
+            else:
+                U, T, sx = X[:-1], X[-1], 0.
+
+            # Calculate A matrix for newton iteration
             apply_A, UT = self.update_A(X, iN)
             
             # RHS of Newton extended system
@@ -146,15 +176,18 @@ class UPO(NewtonSolver):
             
             # Perform GMRes iteration
             # Returns H, beta, Q such that X = Q@y, y = H^(-1)@beta
-            H, beta, Q = GMRES(apply_A, b, iN, self.pmN)
+            H, beta, Q = GMRES(apply_A, b, iN, self.pm)
 
             # Perform hookstep to adjust solution to trust region
             X, F_new, UT = self.hookstep(X, H, beta, Q, iN)
             # Update solution
-            U, sx, T = X[:-2], X[-2], X[-1]
+            if self.pm.sx is not None:
+                U, T, sx = X[:-2], X[-2], X[-1]
+            else:
+                U, T = X[:-1], X[-1]
 
             # Termination condition
-            if F_new < self.pmN.tol_newt:
+            if F_new < self.pm.tol_newt:
                 self.mkdirs_iN(iN)
                 UT = self.evolve(U, T, save = True, iN = iN)
                 break
@@ -162,9 +195,12 @@ class UPO(NewtonSolver):
     def hookstep(self, X, H, beta, Q, iN):
         ''' Performs hookstep on solution given by GMRes untill new |F| is less than previous |F| (or max iter of hookstep is reached) '''
         # Unpack X
-        U, sx, T = X[:-2], X[-2], X[-1]
+        if self.pm.sx is not None:
+            U, T, sx = X[:-2], X[-2], X[-1]
+        else:
+            U, T, sx = X[:-1], X[-1], 0.
         #Initial solution from GMRes in basis Q
-        y = backsub(H, beta, self.pmN)
+        y = backsub(H, beta, self.pm)
         #Initial trust region radius
         Delta = self.norm(y)
 
@@ -173,30 +209,37 @@ class UPO(NewtonSolver):
 
         mu = 0.
         #Perform hookstep
-        for iH in range(self.pmN.N_hook):
+        for iH in range(self.pm.N_hook):
             y, mu = trust_region(Delta, mu)
             dx = Q@y #Unitary transform back to full dimension
-            dU, dsx, dT = dx[:-2], dx[-2], dx[-1] 
+            if self.pm.sx is not None:
+                dU, dT, dsx = dx[:-2], dx[-2], dx[-1] 
+            else:
+                dU, dT, dsx = dx[:-1], dx[-1], 0.
 
             #if projecting U+dU
             U_new = U+dU
-            if self.pmN.sp2:
+            if self.pm.sp2:
                 U_new = self.sol_project(U_new)
 
             #if projecting dU
-            # if self.pmN.sp2:
+            # if self.pm.sp2:
             #     dU = self.sol_project(dU)
             # U_new = U+dU
 
             sx_new = sx+dsx.real
             T_new = T+dT.real
-            X_new = np.append(U_new, [sx_new, T_new])
+            if self.pm.sx is not None:
+                X_new = np.append(U_new, [T_new, sx_new])
+            else:
+                X_new = np.append(U_new, T_new)
 
             UT = self.evolve(U_new, T_new)
-            UT = self.translate(UT,sx_new)
+            if self.pm.sx is not None:
+                UT = self.translate(UT,sx_new)
             F_new = self.norm(U_new-UT)
             
-            lin_exp = self.norm(beta - self.pmN.c * H @ y) #linear expansion of F around x (in basis Q). 
+            lin_exp = self.norm(beta - self.pm.c * H @ y) #linear expansion of F around x (in basis Q). 
             lin_exp_test = self.norm(beta - 1. * H @ y) #Test for checking if norm is equal to tol_gmres
             #F(x) + A dx (A is not the jacobian because of 2 extra conditions)
 
@@ -205,7 +248,7 @@ class UPO(NewtonSolver):
             if F_new <= lin_exp:
                 break
             else:
-                Delta *= self.pmN.reduc_reg #reduce trust region
+                Delta *= self.pm.reduc_reg #reduce trust region
         return X_new, F_new, UT  
 
 
@@ -224,7 +267,7 @@ class UPO(NewtonSolver):
                 with open(f'prints/hookstep/extra_iN{iN:02}.txt', 'a') as file:
                     file.write(f'{Delta0},{mu},{y_norm},0\n') 
 
-                mu = self.pmN.mu0 #Initialize first nonzero value of mu
+                mu = self.pm.mu0 #Initialize first nonzero value of mu
                 return y0, mu
 
             for j in range(1, 1000): #1000 big enough to ensure that condition is satisfied
@@ -239,7 +282,7 @@ class UPO(NewtonSolver):
                     break
                 else:
                     # Increase mu until trust region is satisfied
-                    mu *= self.pmN.mu_inc
+                    mu *= self.pm.mu_inc
                     
             return y, mu
         return trust_region
@@ -296,8 +339,8 @@ class UPO(NewtonSolver):
 
 '''Check if needs to exist'''
 # class UPO_wrap(UPO):
-#     def __init__(self, pm, pmN, solver):
-#         super().__init__(pm, pmN, solver)
+#     def __init__(self, pm, pm, solver):
+#         super().__init__(pm, pm, solver)
 
 #     def mkdirs(self):
 #         dirs = ['output', 'balance', 'prints/error_gmres', 'prints/hookstep', 'prints/apply_A', 'bin_tmp']

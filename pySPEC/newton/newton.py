@@ -9,15 +9,15 @@ from .. import pseudo as ps
 
 class NewtonSolver(abc.ABC):
 
-    def __init__(self, pmN, solver):
+    def __init__(self, pm, solver):
         ''' Initializes the Newton solver
 
         Parameters:
         ----------
-            pmN: Newton parameters dictionary
+            pm: Newton parameters dictionary
             solver: solver object
         '''
-        self.pmN = pmN
+        self.pm = pm
         self.solver = solver
         self.grid = solver.grid # Podría no usar un grid
 
@@ -46,17 +46,17 @@ class NewtonSolver(abc.ABC):
         pass
     
     # def iterate(self, X):
-    #     for i_newt in range(self.pmN.restart+1, self.pmN.N_newt):    
+    #     for i_newt in range(self.pm.restart+1, self.pm.N_newt):    
 
     #         # Write to txts
-    #         if self.pmN.verbose:
+    #         if self.pm.verbose:
     #             self.write_prints(i_newt, b_norm, U, sx, T)
             
     #         # Calculate A matrix for newton iteration
     #         A = self.update_A(X)
 
     #         # Perform GMRes iteration with A and RHS b
-    #         H, beta, Q, k = GMRES(self.apply_A, b, i_newt, self.pmN)
+    #         H, beta, Q, k = GMRES(self.apply_A, b, i_newt, self.pm)
 
     #         if trust_region == 'hook':
     #             X, Y, sx, T, b = hookstep(H, beta, Q, k, X, sx, T, b, i_newt)
@@ -68,9 +68,9 @@ class NewtonSolver(abc.ABC):
     #         b_norm = np.linalg.norm(b)
 
     #         #For every newton step save fields at t and t+T
-    #         mod.save_X(X, f'{i_newt}', pmN, grid)
-    #         mod.save_X(Y, f'{i_newt}_T', pmN, grid)
+    #         mod.save_X(X, f'{i_newt}', pm, grid)
+    #         mod.save_X(Y, f'{i_newt}_T', pm, grid)
 
-    #         if b_norm < self.pmN.tol_newt:
+    #         if b_norm < self.pm.tol_newt:
     #             break
 

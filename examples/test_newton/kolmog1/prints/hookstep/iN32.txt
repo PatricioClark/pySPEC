@@ -1,1 +1,0 @@
-iH, |F|, |F(x)+cAdx|, |F(x)+Adx|
