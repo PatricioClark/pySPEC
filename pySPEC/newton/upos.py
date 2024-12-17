@@ -84,6 +84,17 @@ class UPO(NewtonSolver):
         '''Solenoidal projection of fields'''
         return self.solver.inc_proj(U)
 
+    def apply_proj(self, U, dU, sp):
+        '''Applies projection if sp is True. To dU or U+dU'''
+        if not sp:
+            return U+dU
+
+        if self.pm.sp_dU:
+            dU = self.sol_project(dU)
+            return U+dU
+        else:
+            return self.sol_project(U+dU)
+
     def form_b(self, U, UT):
         "Form RHS of extended Newton system. UT is evolved and translated flattened field"
         b = U - UT
@@ -107,14 +118,16 @@ class UPO(NewtonSolver):
         self.mkdirs_iN(iN-1) # save output and bal from previous iN
         UT = self.evolve(U, T, save = True, iN = iN-1)
 
+        # Translate UT by sx and calculate derivatives
         if self.pm.sx is not None:
             UT = self.translate(UT, sx)
 
             dUT_ds = self.deriv_U(UT)
             dU_ds = self.deriv_U(U)
         else:
-            dUT_ds = dU_ds = np.zeros_like(U)
+            dUT_ds = dU_ds = np.zeros_like(U) # No translation if sx is None
 
+        # Calculate derivatives in time
         dUT_dT = self.evolve(UT, self.pm.dt)
         dUT_dT = (dUT_dT - UT)/self.pm.dt
 
@@ -122,26 +135,32 @@ class UPO(NewtonSolver):
         dU_dt = (dU_dt - U)/self.pm.dt
 
         def apply_A(dX):
-            ''' Applies A matrix to vector (dU,ds,dT)^t  '''        
+            ''' Applies A (extended Jacobian) to vector X^t  '''        
             if self.pm.sx is not None:
                 dU, dT, ds = dX[:-2], dX[-2], dX[-1]
             else:
                 dU, dT, ds = dX[:-1], dX[-1], 0.
 
+            # 1e-7 factor chosen to balance accuracy and numerical stability
             epsilon = 1e-7*self.norm(U)/self.norm(dU)
 
-            U_pert = U + epsilon*dU
-            if self.pm.sp1:
-                U_pert = self.sol_project(U_pert)
+            # Perturb U by epsilon*dU
+            if not self.pm.sp1:
+                U_pert = U + epsilon*dU 
+            else:
+                U_pert = self.apply_proj(U, epsilon*dU)
 
+            # Calculate derivative w.r.t. initial fields
             dUT_dU = self.evolve(U_pert, T)
             if self.pm.sx is not None:
                 dUT_dU = self.translate(dUT_dU,sx)    
             dUT_dU = (dUT_dU - UT)/epsilon
 
+            # Calculate projections of dU needed for extended Newton system
             Tx_proj = np.dot(dU_ds.conj(), dU).real
             t_proj = np.dot(dU_dt.conj(), dU).real
 
+            # Save norms for diagnostics
             norms = [self.norm(U_) for U_ in [U, dU, dUT_dU, dU_dt, dUT_dT, dU_ds, dUT_ds, ]]
 
             self.write_apply_A(iN, norms, t_proj, Tx_proj)
@@ -180,16 +199,27 @@ class UPO(NewtonSolver):
 
             # Perform hookstep to adjust solution to trust region
             X, F_new, UT = self.hookstep(X, H, beta, Q, iN)
+
             # Update solution
             if self.pm.sx is not None:
                 U, T, sx = X[:-2], X[-2], X[-1]
             else:
                 U, T = X[:-1], X[-1]
 
+            # Select different initial condition from orbit if solution is not converging
+            if (1-F_new/F) < self.pm.tol_nudge:
+                with open('prints/nudge.txt', 'a') as file:
+                    file.write(f'Nudging solution at iN = {iN}')
+                U = self.evolve(U, T*self.pm.frac_nudge)
+
             # Termination condition
             if F_new < self.pm.tol_newt:
                 self.mkdirs_iN(iN)
                 UT = self.evolve(U, T, save = True, iN = iN)
+                b = self.form_b(U, UT)
+                F = self.norm(b) #||b|| = ||F||: rootsearch function
+                # Write to txts
+                self.write_prints(iN, F, U, sx, T)
                 break
 
     def hookstep(self, X, H, beta, Q, iN):
@@ -217,15 +247,7 @@ class UPO(NewtonSolver):
             else:
                 dU, dT, dsx = dx[:-1], dx[-1], 0.
 
-            #if projecting U+dU
-            U_new = U+dU
-            if self.pm.sp2:
-                U_new = self.sol_project(U_new)
-
-            #if projecting dU
-            # if self.pm.sp2:
-            #     dU = self.sol_project(dU)
-            # U_new = U+dU
+            U_new = self.apply_proj(U, dU, self.pm.sp2)
 
             sx_new = sx+dsx.real
             T_new = T+dT.real
@@ -336,13 +358,3 @@ class UPO(NewtonSolver):
     def write_hookstep(self, iN, iH, F_new, lin_exp, lin_exp_test):
         with open(f'prints/hookstep/iN{iN:02}.txt', 'a') as file:
             file.write(f'{iH:02},{F_new:.4e},{lin_exp:.4e},{lin_exp_test:.4e}\n')
-
-'''Check if needs to exist'''
-# class UPO_wrap(UPO):
-#     def __init__(self, pm, pm, solver):
-#         super().__init__(pm, pm, solver)
-
-#     def mkdirs(self):
-#         dirs = ['output', 'balance', 'prints/error_gmres', 'prints/hookstep', 'prints/apply_A', 'bin_tmp']
-#         for dir_ in dirs:
-#             self.mkdir(dir_)
