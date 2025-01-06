@@ -59,9 +59,6 @@ def plot_time_lapse(field,
 
     # Save the animation as a GIF
     ani.save(name, writer='pillow', fps=fps)
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.animation import ArtistAnimation
 
 # Define plot function for gifs with two fields
 def plot_time_lapse_two_fields(field1,
@@ -119,8 +116,8 @@ def plot_time_lapse_two_fields(field1,
 
 # load frames
 steps = int(pm.T/pm.dt) # total steps of the simulation
-U = np.load(f'{pm.out_path}/uu_memmap.npy')[::pm.plot_step]
-H = np.load(f'{pm.out_path}/hh_memmap.npy')[::pm.plot_step]
+U = np.load(f'{pm.out_path}/uums.npy')[::pm.plot_step]
+H = np.load(f'{pm.out_path}/hhms.npy')[::pm.plot_step]
 hb = np.load(f'{pm.out_path}/hb.npy')
 # plot gifs for u and h and save to out_path
 plot_time_lapse(U ,steps, Lx = pm.Lx , Nx = pm.Nx,

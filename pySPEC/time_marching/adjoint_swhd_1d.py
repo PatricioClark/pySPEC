@@ -2,9 +2,12 @@
 
 import numpy as np
 import os
+import matplotlib.pyplot as plt
 
 from .pseudospectral import PseudoSpectral
 from .. import pseudo as ps
+from .swhd_1d import SWHD_1D
+
 
 class Adjoint_SWHD_1D(PseudoSpectral):
     ''' 1D Adjoint Shallow Water Equations
@@ -18,34 +21,90 @@ class Adjoint_SWHD_1D(PseudoSpectral):
 
     num_fields = 2 # adoint fields u_ , h_
     dim_fields = 1
-    def __init__(self, pm):
+    def __init__(self, pm, swhd_instance):
         super().__init__(pm)
+        self.swhd = swhd_instance
         self.grid = ps.Grid1D(pm)
         self.iit = pm.iit
-        # self.sample_rate = pm.sample_rate
-        self.dt_step = pm.dt_step
-        self.dx_step = pm.dx_step
+        self.Nt = round(pm.T/pm.dt)
         self.total_steps =  round(self.pm.T/self.pm.dt)
         self.data_path = pm.data_path
         self.field_path = pm.field_path
         self.hb_path = pm.hb_path
-        # self.hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
-        self.hb = np.load(f'{self.hb_path}/hb_memmap.npy', mmap_mode='r')[self.iit-1]  # Access the data at the current iteration and Load hb at current GD iteration
-        try:
-            self.uus =  np.load(f'{self.field_path}/uu_memmap.npy', mmap_mode='r') # all uu fields in time
-        except:
-            self.uus = None
-        try:
-            self.hhs =  np.load(f'{self.field_path}/hh_memmap.npy', mmap_mode='r') # all hh fields in time
-        except:
-            self.hhs = None
-        self.uums, self.uusparse_time, self.uusparse_space = self.sample_memmap(data_path = self.data_path, filename = 'uu_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
-        self.hhms, self.hhsparse_time, self.hhsparse_space = self.sample_memmap(data_path = self.data_path, filename = 'hh_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
-        # make sparse forcing terms
-        uus_sparse, sparse_time, sparse_space = self.sample_memmap(data_path = self.field_path, filename = 'uu_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
-        hhs_sparse, sparse_time, sparse_space = self.sample_memmap(data_path = self.field_path, filename = 'hh_memmap.npy',dt_step = self.dt_step, dx_step = self.dx_step)
-        self.uuforcings = uus_sparse -self.uums
-        self.hhforcings = hhs_sparse -self.hhms
+        self.hb = None
+        self.hx_uu = None
+        self.h_ux = None
+        self.uus = None
+        self.hhs = None
+        self.uums = None
+        self.hhms = None
+        self.forced_uus = None
+        self.forced_hhs = None
+        self.uus_ = None
+        self.hhs_ = None
+        self.st = pm.st
+        self.sx = pm.sx
+        self.Ns = None
+        self.kN = None
+
+    def get_measurements(self):
+        self.uums = np.load(f'{self.data_path}/uums.npy')[:self.total_steps, :] # all uu fields in time
+        self.hhms = np.load(f'{self.data_path}/hhms.npy')[:self.total_steps, :] # all hh fields in time
+
+    def sparsify_mms(self, field, st = 1, sx = 1, N = 1024):
+            '''Returns sparse signal, number of sparse measurements and Nyquist frequency'''
+
+            # Create a copy to avoid modifying the original
+            modified_data_ = np.zeros_like(field)
+
+            # Identify indices to keep based on the time interval
+            time_indices = np.arange(0, field.shape[0], st)
+            # Apply the time-interval-based filter
+            modified_data_[time_indices] = field[time_indices]
+
+            # Create another copy to avoid modifying the original
+            modified_data = np.zeros_like(modified_data_)
+            # Identify indices to keep based on the space interval
+            space_indices = np.arange(0, field.shape[-1], sx)
+            modified_data[:,space_indices] = modified_data_[:,space_indices]
+            # calculate effective grid size Ns and Nyquist frequency
+            Ns = int(N/sx)
+            kN = int(Ns/2)
+
+            return modified_data, Ns, kN
+
+    def get_sparse_forcing(self):
+        self.forced_uus, self.Ns, self.kN = self.sparsify_mms(self.uus - self.uums, st = self.st, sx = self.sx)
+        self.forced_hhs, Ns, kN = self.sparsify_mms(self.hhs - self.hhms, st = self.st, sx = self.sx)
+
+    def update_fields(self, swhd_instance):
+        # update the forward solver status first
+        self.swhd = swhd_instance
+        self.uus = self.swhd.uus # all uu fields in time
+        self.hhs = self.swhd.hhs # all hh fields in time
+        self.hb = self.swhd.hb
+
+    # def sparsify(self):
+    #     self.uuforcings = self.uus -self.uums[:self.Nt,:]
+    #     self.hhforcings = self.hhs -self.hhms[:self.Nt,:]
+
+    def sparsify(self, signal, s=1, N=1024):
+        '''Masks signal to make sparse measurements every s points.
+        Returns sparse signal, Nyquist frequency and number of sparse measurements'''
+
+        Ns = int(N/s)
+        kN = int(Ns/2)
+        signal_sparse = np.zeros_like(signal)
+        signal_sparse[::s] = signal[::s]
+
+        return signal_sparse,kN,Ns
+
+
+
+
+
+
+
 
     def rkstep(self, fields, prev, oo):
         # Unpack
@@ -59,30 +118,22 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         step = self.current_step
 
         # get physical fields and measurements from T to t0, back stepping in time
-        Nt = round(self.pm.T/self.pm.dt)
+        Nt = self.Nt
         back_step = Nt-1 - step
-        # uu = np.load(f'{self.field_path}/uu_{back_step:04}.npy') # u field at current time step
         uu = self.uus[back_step]
-        # hh = np.load(f'{self.field_path}/hh_{back_step:04}.npy') # h field at current time step
         hh = self.hhs[back_step]
 
         # get hb
         hb = self.hb
-
-        # measurements
-        uum = self.uums[back_step]
-        hhm = self.hhms[back_step]
-
-        # sparse forcing terms
-        uuforcing = self.uuforcings[back_step]
-        hhforcing = self.hhforcings[back_step]
-
-        fuuforcing = self.grid.forward(uuforcing)
-        fhhforcing = self.grid.forward(hhforcing)
+        # forcing terms
+        forced_uu = self.forced_uus[back_step]
+        forced_hh = self.forced_hhs[back_step]
 
         fu  = self.grid.forward(uu)
         fux = self.grid.deriv(fu, self.grid.kx)
         ux = self.grid.inverse(fux)
+
+        # fh  = self.grid.forward(hh)
 
         # calculate terms
         uu_ = self.grid.inverse(fu_)
@@ -99,19 +150,62 @@ class Adjoint_SWHD_1D(PseudoSpectral):
 
         fh_hb_hx_ = self.grid.forward((hh-hb)*hx_)
 
+        # sparse forcing terms
+        '''if step%self.st == 0: # time sparsity given by st
+            uuforcing = uu - uum
+            hhforcing = hh - hhm
+            # space sparsity given by sx
+            sx=self.sx
+            uuforcing_sparse, kN, Ns = self.sparsify(uuforcing, s= sx)
+            hhforcing_sparse, kN, Ns = self.sparsify(hhforcing, s= sx)
+            fuuforcing_sparse = self.grid.forward(uuforcing_sparse)
+            fhhforcing_sparse = self.grid.forward(hhforcing_sparse)
+            # get rid of frequencies larger than Nyquist for subsampled grid
+            fuuforcing_sparse[kN+1:] = 0.0
+            fhhforcing_sparse[kN+1:] = 0.0
+            # normalize in Fourier space
+            fuuforcing_sparse = fuuforcing_sparse*1024/Ns
+            fhhforcing_sparse = fhhforcing_sparse*1024/Ns
+        else:
+            fuuforcing_sparse = np.zeros_like(fu)
+            fhhforcing_sparse = np.zeros_like(fu)'''
+
+        '''f,axs = plt.subplots(nrows=2, figsize = (15,5))
+        axs[0].loglog(self.grid.kx, np.abs(self.grid.forward(uuforcing_sparse)), label = 'sparse u spectrum')
+        axs[0].loglog(self.grid.kx, np.abs(self.grid.forward(uuforcing)), label = 'u spectrum')
+        axs[0].loglog(self.grid.kx, np.abs(self.grid.forward(hhforcing_sparse)), label = 'sparse h spectrum')
+        axs[0].loglog(self.grid.kx, np.abs(self.grid.forward(hhforcing)), label = 'h spectrum')
+        axs[0].legend()
+
+        axs[1].scatter(np.arange(len(uuforcing_sparse)), uuforcing_sparse, label = 'u sparse signal')
+        axs[1].plot(np.arange(0,1024), self.grid.inverse(fuuforcing_sparse), linestyle = '--', color= 'red', label = 'fft inverse u sparse signal')
+        # axs[1].plot(np.arange(0,1024), uuforcing, label = 'u true signal')
+        axs[1].scatter(np.arange(len(hhforcing_sparse)), hhforcing_sparse, label = 'h sparse signal')
+        axs[1].plot(np.arange(0,1024), self.grid.inverse(fhhforcing_sparse), linestyle = '--', color= 'red', label = 'fft inverse h sparse signal')
+        #axs[1].plot(np.arange(0,1024), hhforcing, label = 'h true signal')
+        axs[1].legend()
+        plt.savefig('forcing_debug.png')'''
+
+
+
+        fforced_uu = self.grid.forward(forced_uu)
+        fforced_hh = self.grid.forward(forced_hh)
+        # get rid of frequencies larger than Nyquist for subsampled grid
+        fforced_uu[self.kN+1:] = 0.0
+        fforced_hh[self.kN+1:] = 0.0
+        # normalize in Fourier space
+        fforced_uu = fforced_uu*1024/self.Ns
+        fforced_hh = fforced_hh*1024/self.Ns
         # backwards integration in time, with sampled forcing terms
-        fu_ = fu_p - (self.grid.dt/oo) * (2*fuuforcing - fu_ux_ - fu_u_x - fh_hb_hx_)
-        fh_ = fh_p - (self.grid.dt/oo) * (2*fhhforcing - self.pm.g*fux_ - fu_hx_)
-
-        # save zero modes for debugging
-        # np.save(f'{self.pm.out_path}/adjoint_zero_modes_{step:04}', np.array([fu_[self.grid.zero_mode], fh_[self.grid.zero_mode]]))
-
+        fu_ = fu_p - (self.grid.dt/oo) * (2*fforced_uu - fu_ux_ - fu_u_x - fh_hb_hx_)
+        fh_ = fh_p - (self.grid.dt/oo) * (2*fforced_hh - self.pm.g*fux_ - fu_hx_)
 
         # de-aliasing
-        # fu_[self.grid.zero_mode] = 0.0 # It would seem u_ should have mode zero
+        # fu_[self.grid.zero_mode] = 0.0
         fu_[self.grid.dealias_modes] = 0.0
-        fh_[self.grid.zero_mode] = 0.0 # It would seem h_ should not have mode zero
+        fh_[self.grid.zero_mode] = 0.0
         fh_[self.grid.dealias_modes] = 0.0
+
 
         # GD step
         # update new hx_
@@ -123,24 +217,34 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         # de-aliasing GD step
         fdg_[self.grid.dealias_modes] = 0.0
         dg_ = self.grid.inverse(fdg_)
-        # np.save(f'{self.pm.out_path}/hx_uu_{step:04}', dg_)
-        self.save_memmap(f'{self.pm.out_path}/hx_uu_memmap.npy', dg_, step, self.total_steps, dtype=np.float64)
-
-        # alternative GD step
-        # update new h_
-        h_ = self.grid.inverse(fh_)
-        # multiply with field
-        non_dealiased_dg = h_* ux
-        fdg = self.grid.forward(non_dealiased_dg)
-        # de-aliasing GD step
-        fdg[self.grid.dealias_modes] = 0.0
-        dg = self.grid.inverse(fdg)
-        # np.save(f'{self.pm.out_path}/h_ux_{step:04}', dg)
-        self.save_memmap(f'{self.pm.out_path}/h_ux_memmap.npy', dg, step, self.total_steps, dtype=np.float64)
+        self.hx_uu = self.save_to_ram(self.hx_uu, dg_, step, self.total_steps, dtype=np.float64)
 
         return [fu_,fh_]
 
-    # Save hb and dg arays in file
+
+    def save_to_ram(self, storage, new_data, step, total_steps, dtype=np.float64):
+        """
+        Saves new data to an in-memory storage array.
+
+        Args:
+            storage (np.ndarray or None): The in-memory storage array. Pass `None` on the first call to initialize it.
+            new_data (np.ndarray): Data to be saved at the current iteration.
+            step (int): Current iteration (used to index the storage array).
+            total_steps (int): Total number of iterations to preallocate space for.
+            dtype (type): Data type of the saved array (default: np.float64).
+
+        Returns:
+            np.ndarray: Updated storage array.
+        """
+        if step == 0:
+            # Initialize the in-memory storage array with preallocated space
+            storage = np.zeros((total_steps,) + new_data.shape, dtype=dtype)
+
+        # Save the new data into the corresponding slot
+        storage[step] = new_data
+
+        return storage
+# Save hb and dg arays in file
     def save_memmap(self, filename, new_data, step, total_steps, dtype=np.float64):
         """
         Saves new data to an existing or new preallocated memory-mapped .npy file.
@@ -167,42 +271,12 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         fp[step] = new_data
         del fp  # Force the file to flush and close
 
-    def sample_memmap(self, data_path, filename, dt_step = 1, dx_step = 1):
-        '''returns sparse space-time measurements given dt and dx'''
-
-        # Load the memory-mapped field
-        field = np.load(f'{data_path}/{filename}', mmap_mode='r')[:self.total_steps, :]  # read-only measurements until time T
-
-        # Create a copy to avoid modifying the original
-        modified_data_ = np.zeros_like(field)
-
-        # Identify indices to keep based on the time interval
-        time_indices = np.arange(0, field.shape[0], dt_step)
-        # Apply the time-interval-based filter
-        modified_data_[time_indices] = field[time_indices]
-
-        # this is the pinn-like random sampling of buoys
-        # Randomly choose spatial indices to replace with zero (non-buoyed spaces)
-        # random_indices = np.random.choice(field.shape[-1], size=int(field.shape[-1] * (1 - sample_rate)), replace=False)
-        # Replace those indices with zero in the copy
-        # modified_data[:,  zero_indices] = 0
-
-        # Create another copy to avoid modifying the original
-        modified_data = np.zeros_like(modified_data_)
-        # Identify indices to keep based on the space interval
-        space_indices = np.arange(0, field.shape[-1], dx_step)
-        modified_data[:,space_indices] = modified_data_[:,space_indices]
-        return modified_data, time_indices, space_indices
-
-
-
     def outs(self, fields, step):
         uu_ = self.grid.inverse(fields[0])
-        # np.save(f'{self.pm.out_path}/adjuu_{step:04}', uu_)
-        self.save_memmap(f'{self.pm.out_path}/adjuu_memmap.npy', uu_, step, self.total_steps, dtype=np.float64)
+        self.uus_ = self.save_to_ram(self.uus_, uu_, int(step/self.pm.ostep), int(self.total_steps/self.pm.ostep), dtype=np.float64)
+
         hh_ = self.grid.inverse(fields[1])
-        # np.save(f'{self.pm.out_path}/adjhh_{step:04}', hh_)
-        self.save_memmap(f'{self.pm.out_path}/adjhh_memmap.npy', hh_, step, self.total_steps, dtype=np.float64)
+        self.hhs_ = self.save_to_ram(self.hhs_, hh_, int(step/self.pm.ostep), int(self.total_steps/self.pm.ostep), dtype=np.float64)
 
 
     def balance(self, fields, step):

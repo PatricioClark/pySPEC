@@ -1,3 +1,4 @@
+''' 1D Adjoint Shallow Water Equations '''
 import json
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,45 +13,29 @@ from types import SimpleNamespace
 import pySPEC as ps
 from pySPEC.time_marching import SWHD_1D, Adjoint_SWHD_1D
 
-from noise import uh_noise
 from mod import *
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# Parse JSON into an object with attributes corresponding to dict keys.
-fpm = json.load(open(f'{current_dir}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
-fpm.Lx = 2*np.pi*fpm.Lx
-fpm.out_path = fpm.forward_out_path
-check_dir(fpm.out_path) # make out path if it doesn't exist
-fpm.ostep = fpm.forward_ostep
-# Parse JSON into an object with attributes corresponding to dict keys.
-bpm = json.load(open(f'{current_dir}/params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
-bpm.Lx = 2*np.pi*bpm.Lx
-bpm.out_path = bpm.backward_out_path
-check_dir(bpm.out_path) # make out path if it doesn't exist
-bpm.ostep = bpm.backward_ostep
+from .pseudospectral import PseudoSpectral
+from .. import pseudo as ps
 
-# Initialize grid
-grid   = ps.Grid1D(fpm)
+class Adjoint_GD(PseudoSpectral):
+    ''' Performs Gradient Descent optimization for SWHD inverse problems.
+    '''
 
-# total number of iterations
-total_iterations = bpm.iitN - bpm.iit0 - 1
+    def __init__(self, pm):
+        super().__init__(pm)
+        self.grid = ps.Grid1D(pm)
+        self.memmap = pm.memmap # True if saving to disk
+        self.iit = pm.iit
+        # self.sample_rate = pm.sample_rate
+        self.dt_step = pm.dt_step
+        self.dx_step = pm.dx_step
+        self.random_sample = pm.random_sample
+        self.total_steps =  round(self.pm.T/self.pm.dt)
+        self.data_path = pm.data_path
+        self.field_path = pm.field_path
+        self.hb_path = pm.hb_path
 
-# remove all files from hb_path if restarting GD
-check_dir(bpm.hb_path)
-
-# restart from iit0
-reset(fpm, bpm)
-
-# true hb
-true_hb = np.load(f'{bpm.data_path}/hb.npy')
-
-
-# get hb and dg memmap files
-hb, dg = get_hb_dg(fpm, bpm, true_hb, total_iterations)
-
-
-# Initial conditions
-uu0,hh0 = uh_noise(fpm, grid)
 
 
 # Define objective
@@ -133,6 +118,8 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
 
     plt.close("all")
     plot_fields(fpm,hb,true_hb,out_u,out_h)
+    plot_fourier(fpm, grid, hb,
+                true_hb)
 
 
     loss = np.loadtxt(f'{fpm.hb_path}/loss.dat', unpack=True)

@@ -6,5 +6,7 @@ params.json
 *.dat
 *.npy
 *.sh
+*.ipynb
+*.out
 **/__pycache__/
 outs/

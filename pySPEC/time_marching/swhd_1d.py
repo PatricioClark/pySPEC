@@ -19,14 +19,28 @@ class SWHD_1D(PseudoSpectral):
     def __init__(self, pm):
         super().__init__(pm)
         self.grid = ps.Grid1D(pm)
+        self.make_data = pm.make_data
         self.iit = pm.iit
+        self.iit0 = pm.iit0
+        self.iitN = pm.iitN
+        self.total_iterations = self.iitN - self.iit0 - 1
         self.total_steps =  round(self.pm.T/self.pm.dt) # total time steps
+        self.data_path = pm.data_path
         self.hb_path = pm.hb_path
-        try:
-            self.hb = np.load(f'{self.hb_path}/hb_memmap.npy', mmap_mode='r')[self.iit-1]  # Access the data at the current iteration and Load hb at current GD iteration
-        except:
-            self.hb = np.load(f'{self.hb_path}/hb_{self.iit}.npy') # hb field at current GD iteration
+        self.uus = None
+        self.hhs = None
+        self.hb = None
+        self.true_hb = None
+        self.dg = None
 
+    def update_true_hb(self):
+        self.true_hb = np.load(f'{self.data_path}/hb.npy')
+
+    def update_hb(self, hb):
+        self.hb = hb
+
+    def update_dg(self, dg):
+        self.dg = dg
 
     def rkstep(self, fields, prev, oo):
         # Unpack
@@ -53,7 +67,6 @@ class SWHD_1D(PseudoSpectral):
         fhx = self.grid.deriv(fh, self.grid.kx) # i k_i fh_i
 
         fu_ux = self.grid.forward(uu*ux)
-
         fu_h_hb_x = self.grid.deriv(self.grid.forward(uu*(hh-hb)) , self.grid.kx) # i k_i f(uu*(hh-hb))_i
 
         fu = fup + (self.grid.dt/oo) * (-fu_ux -  self.pm.g*fhx)
@@ -67,7 +80,29 @@ class SWHD_1D(PseudoSpectral):
 
         return [fu, fh]
 
-    # Save hb and dg arays in file
+    def save_to_ram(self, storage, new_data, step, total_steps, dtype=np.float64):
+        """
+        Saves new data to an in-memory storage array.
+
+        Args:
+            storage (np.ndarray or None): The in-memory storage array. Pass `None` on the first call to initialize it.
+            new_data (np.ndarray): Data to be saved at the current iteration.
+            step (int): Current iteration (used to index the storage array).
+            total_steps (int): Total number of iterations to preallocate space for.
+            dtype (type): Data type of the saved array (default: np.float64).
+
+        Returns:
+            np.ndarray: Updated storage array.
+        """
+        if step == 0:
+            # Initialize the in-memory storage array with preallocated space
+            storage = np.zeros((total_steps,) + new_data.shape, dtype=dtype)
+        # Save the new data into the corresponding slot
+        storage[step] = new_data
+
+        return storage
+
+# Save hb and dg arays in file
     def save_memmap(self, filename, new_data, step, total_steps, dtype=np.float64):
         """
         Saves new data to an existing or new preallocated memory-mapped .npy file.
@@ -96,11 +131,14 @@ class SWHD_1D(PseudoSpectral):
 
     def outs(self, fields, step):
         uu = self.grid.inverse(fields[0])
-        # np.save(f'{self.pm.out_path}/uu_{step:04}', uu)
-        self.save_memmap(f'{self.pm.out_path}/uu_memmap.npy', uu, int(step/self.pm.ostep), int(self.total_steps/self.pm.ostep), dtype=np.float64)
+        self.uus = self.save_to_ram(self.uus, uu, int(step/self.pm.ostep), int(self.total_steps/self.pm.ostep), dtype=np.float64)
+
         hh = self.grid.inverse(fields[1])
-        # np.save(f'{self.pm.out_path}/hh_{step:04}', hh)
-        self.save_memmap(f'{self.pm.out_path}/hh_memmap.npy', hh, int(step/self.pm.ostep), int(self.total_steps/self.pm.ostep), dtype=np.float64)
+        self.hhs = self.save_to_ram(self.hhs, hh, int(step/self.pm.ostep), int(self.total_steps/self.pm.ostep), dtype=np.float64)
+        if self.make_data and (step == self.total_steps-1):
+            np.save(f'{self.pm.out_path}/uums', self.uus)
+            np.save(f'{self.pm.out_path}/hhms', self.hhs)
+
 
     def balance(self, fields, step):
         eng = self.grid.energy(fields)
