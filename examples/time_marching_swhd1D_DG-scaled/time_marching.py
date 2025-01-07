@@ -50,8 +50,8 @@ fields = solver.evolve(fields, pm.T, bstep=pm.bstep, ostep=pm.ostep)
 bal = np.loadtxt(f'{pm.out_path}/balance.dat', unpack=True)
 # Plot fields
 tval = int(pm.T/pm.dt*0.5)
-out_u = np.load(f'{pm.out_path}/uums.npy')[tval] # all uu fields in time
-out_h = np.load(f'{pm.out_path}/hhms.npy')[tval] # all uu fields in time
+out_u = np.load(f'{pm.out_path}/uums.npy')[tval] # all uu fields in time tval
+out_h = np.load(f'{pm.out_path}/hhms.npy')[tval] # all uu fields in time tval
 out_hb = np.load(f'{pm.out_path}/hb.npy')
 
 f,axs = plt.subplots(ncols=3)

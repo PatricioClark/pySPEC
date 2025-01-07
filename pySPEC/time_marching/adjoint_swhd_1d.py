@@ -25,13 +25,16 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         super().__init__(pm)
         self.swhd = swhd_instance
         self.grid = ps.Grid1D(pm)
+        self.inverse_u = pm.inverse_u
         self.iit = pm.iit
+        self.iitN = pm.iitN
         self.Nt = round(pm.T/pm.dt)
         self.total_steps =  round(self.pm.T/self.pm.dt)
         self.data_path = pm.data_path
         self.field_path = pm.field_path
         self.hb_path = pm.hb_path
         self.hb = None
+        self.true_hb = None
         self.hx_uu = None
         self.h_ux = None
         self.uus = None
@@ -40,12 +43,16 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.hhms = None
         self.forced_uus = None
         self.forced_hhs = None
+        self.u_loss = None
+        self.h_loss = None
+        self.val = None
         self.uus_ = None
         self.hhs_ = None
         self.st = pm.st
         self.sx = pm.sx
         self.Ns = None
         self.kN = None
+
 
     def get_measurements(self):
         self.uums = np.load(f'{self.data_path}/uums.npy')[:self.total_steps, :] # all uu fields in time
@@ -74,8 +81,14 @@ class Adjoint_SWHD_1D(PseudoSpectral):
             return modified_data, Ns, kN
 
     def get_sparse_forcing(self):
-        self.forced_uus, self.Ns, self.kN = self.sparsify_mms(self.uus - self.uums, st = self.st, sx = self.sx)
-        self.forced_hhs, Ns, kN = self.sparsify_mms(self.hhs - self.hhms, st = self.st, sx = self.sx)
+        if self.inverse_u:
+            self.forced_uus = np.zeros_like(self.uums)
+        else:
+            self.forced_uus, Ns, kN = self.sparsify_mms(self.uus - self.uums, st = self.st, sx = self.sx)
+        self.forced_hhs, self.Ns, self.kN = self.sparsify_mms(self.hhs - self.hhms, st = self.st, sx = self.sx)
+
+    def update_true_hb(self):
+        self.true_hb = np.load(f'{self.data_path}/hb.npy')
 
     def update_fields(self, swhd_instance):
         # update the forward solver status first
@@ -87,6 +100,18 @@ class Adjoint_SWHD_1D(PseudoSpectral):
     # def sparsify(self):
     #     self.uuforcings = self.uus -self.uums[:self.Nt,:]
     #     self.hhforcings = self.hhs -self.hhms[:self.Nt,:]
+
+    def update_loss(self, iit):
+        u_loss = np.sum((self.uums - self.uus)**2)
+        h_loss = np.sum((self.uums - self.uus)**2)
+
+        self.u_loss = self.save_to_ram(self.u_loss, u_loss, iit, self.iitN, dtype=np.float64)
+        self.h_loss = self.save_to_ram(self.h_loss, h_loss, iit, self.iitN, dtype=np.float64)
+
+    def update_val(self, iit):
+        val = np.sum((self.true_hb - self.hb)**2)
+        self.val = self.save_to_ram(self.val, val, iit, self.iitN, dtype=np.float64)
+
 
     def sparsify(self, signal, s=1, N=1024):
         '''Masks signal to make sparse measurements every s points.
@@ -150,44 +175,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
 
         fh_hb_hx_ = self.grid.forward((hh-hb)*hx_)
 
-        # sparse forcing terms
-        '''if step%self.st == 0: # time sparsity given by st
-            uuforcing = uu - uum
-            hhforcing = hh - hhm
-            # space sparsity given by sx
-            sx=self.sx
-            uuforcing_sparse, kN, Ns = self.sparsify(uuforcing, s= sx)
-            hhforcing_sparse, kN, Ns = self.sparsify(hhforcing, s= sx)
-            fuuforcing_sparse = self.grid.forward(uuforcing_sparse)
-            fhhforcing_sparse = self.grid.forward(hhforcing_sparse)
-            # get rid of frequencies larger than Nyquist for subsampled grid
-            fuuforcing_sparse[kN+1:] = 0.0
-            fhhforcing_sparse[kN+1:] = 0.0
-            # normalize in Fourier space
-            fuuforcing_sparse = fuuforcing_sparse*1024/Ns
-            fhhforcing_sparse = fhhforcing_sparse*1024/Ns
-        else:
-            fuuforcing_sparse = np.zeros_like(fu)
-            fhhforcing_sparse = np.zeros_like(fu)'''
-
-        '''f,axs = plt.subplots(nrows=2, figsize = (15,5))
-        axs[0].loglog(self.grid.kx, np.abs(self.grid.forward(uuforcing_sparse)), label = 'sparse u spectrum')
-        axs[0].loglog(self.grid.kx, np.abs(self.grid.forward(uuforcing)), label = 'u spectrum')
-        axs[0].loglog(self.grid.kx, np.abs(self.grid.forward(hhforcing_sparse)), label = 'sparse h spectrum')
-        axs[0].loglog(self.grid.kx, np.abs(self.grid.forward(hhforcing)), label = 'h spectrum')
-        axs[0].legend()
-
-        axs[1].scatter(np.arange(len(uuforcing_sparse)), uuforcing_sparse, label = 'u sparse signal')
-        axs[1].plot(np.arange(0,1024), self.grid.inverse(fuuforcing_sparse), linestyle = '--', color= 'red', label = 'fft inverse u sparse signal')
-        # axs[1].plot(np.arange(0,1024), uuforcing, label = 'u true signal')
-        axs[1].scatter(np.arange(len(hhforcing_sparse)), hhforcing_sparse, label = 'h sparse signal')
-        axs[1].plot(np.arange(0,1024), self.grid.inverse(fhhforcing_sparse), linestyle = '--', color= 'red', label = 'fft inverse h sparse signal')
-        #axs[1].plot(np.arange(0,1024), hhforcing, label = 'h true signal')
-        axs[1].legend()
-        plt.savefig('forcing_debug.png')'''
-
-
-
+        # Fourier transform sparse forced terms
         fforced_uu = self.grid.forward(forced_uu)
         fforced_hh = self.grid.forward(forced_hh)
         # get rid of frequencies larger than Nyquist for subsampled grid
@@ -238,7 +226,9 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         """
         if step == 0:
             # Initialize the in-memory storage array with preallocated space
-            storage = np.zeros((total_steps,) + new_data.shape, dtype=dtype)
+            # storage = np.zeros((total_steps,) + new_data.shape, dtype=dtype)
+            storage = np.full((total_steps,) + new_data.shape, np.nan, dtype=dtype)
+
 
         # Save the new data into the corresponding slot
         storage[step] = new_data

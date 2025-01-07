@@ -61,22 +61,41 @@ hh0 = fpm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2)
 
 # true hb
 fsolver.update_true_hb()
+bsolver.update_true_hb()
+
 
 # Initial hb ansatz
 hb = np.zeros_like(fsolver.true_hb)
 dg = np.zeros_like(fsolver.true_hb)
+# update hb and dg
+fsolver.update_hb(hb)
+fsolver.update_dg(dg)
 
-# Define objective
-dim = 1024
-mat = jrd.normal(jrd.PRNGKey(0), (dim, dim))
-mat = mat @ mat.T  # Ensure mat is positive semi-definite
+# choose gradient descent optimizer
+if pm.optimizer == 'lbfgs':
+    # Define objective
+    dim = 1024
+    mat = jrd.normal(jrd.PRNGKey(0), (dim, dim))
+    mat = mat @ mat.T  # Ensure mat is positive semi-definite
+    # Define optimizer
+    lr = bpm.lgd
+    opt = optax.scale_by_lbfgs()
+    # Initialize optimization
+    state = opt.init(hb)
+elif pm.optimizer == 'sgd':
+    # momentum gradient descent optimizer
+    # Initialize the momentum optimizer
+    opt_init, opt_update = optax.sgd(learning_rate=bpm.lgd, momentum=0.9)
+    # Gradient update step
+    def update(params, grad, opt_state):
+        updates, opt_state = opt_update(grad, opt_state, params)
+        new_params = optax.apply_updates(params, updates)
+        return new_params, opt_state
+    opt_state = opt_init(hb)
 
-# Define optimizer
-lr = bpm.lgd
-opt = optax.scale_by_lbfgs()
 
-# Initialize optimization
-state = opt.init(hb)
+
+
 for iit in range(fpm.iit0 + 1, fpm.iitN):
     # update iit
     fpm.iit = iit
@@ -86,19 +105,17 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
     uu = uu0
     hh = hh0
     fields = [uu, hh]
-    # update hb and dg
-    fsolver.update_hb(hb)
-    fsolver.update_dg(dg)
+
     # Forward integration
     print(f'iit {iit} : evolving forward')
     fsolver.evolve(fields, fpm.T, bstep=fpm.bstep, ostep=fpm.ostep)
+    bsolver.update_fields(fsolver)
 
     # Null initial conditions for adjoint state
     uu_ = np.zeros_like(grid.xx)
     hh_ = np.zeros_like(grid.xx)
     fields = [uu_, hh_]
     # update backward solver at each step
-    bsolver.update_fields(fsolver)
     bsolver.get_sparse_forcing()
 
 
@@ -114,44 +131,58 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
     # update hb values with momentum GD
     print(f'\niit {iit} : update hb')
     # Run optimization
-    DG, state = opt.update(dg, state, hb)
-    hb = hb - lr * DG
-    # hb = hb - lr * dg
+    if pm.optimizer == 'lbfgs':
+        DG, state = opt.update(dg, state, hb)
+        hb = hb - lr * DG
+    elif pm.optimizer == 'sgd':
+        hb, opt_state = update(hb, dg, opt_state)
+
+    # update hb and dg
+    fsolver.update_hb(hb)
+    fsolver.update_dg(dg)
+
     # save for the following iteration
     print(f'\niit {iit} : save hb')
+    bsolver.update_loss(iit-1)
+    bsolver.update_val(iit-1)
 
-    # calculate loss for new fields
-    uus = bsolver.uus # all uu fields in time
-    hhs = bsolver.hhs # all hh fields in time
-    uums = bsolver.uums[:Nt] # all uu measurements in time
-    hhms = bsolver.hhms[:Nt] # all hh measurements in time
+    # save loss
+    # loss = [f'{iit}', f'{u_loss:.6e}' , f'{h_loss:.6e}']
+    # with open(f'{fpm.hb_path}/loss.dat', 'a') as output:
+    #     print(*loss, file=output)
 
-    u_loss = np.sum((uums - uus)**2)
-    h_loss = np.sum((uums - uus)**2)
+    # calculate validation
+    # save validation
+    # val = [f'{iit}', f'{hb_val:.6e}']
+    # with open(f'{fpm.hb_path}/hb_val.dat', 'a') as output:
+    #     print(*val, file=output)
 
+    if iit%pm.ckpt==0:
+        # Plot fields
+        print(f'\niit {iit} : plot')
+        tval = int(fpm.T/fpm.dt*0.5)
+        out_u = bsolver.uus[tval]
+        true_u = bsolver.uums[tval]
+        out_h = bsolver.hhs[tval]
+        true_h = bsolver.hhms[tval]
 
-    loss = [f'{iit}', f'{u_loss:.6e}' , f'{h_loss:.6e}']
-    with open(f'{fpm.hb_path}/loss.dat', 'a') as output:
-        print(*loss, file=output)
+        plt.close("all")
+        plot_fields(fpm,
+                    hb,
+                    fsolver.true_hb,
+                    out_u,
+                    true_u,
+                    out_h,
+                    true_h)
+        plot_fourier(fpm, grid, hb,
+                    fsolver.true_hb)
 
-    hb_val = np.sum((fsolver.true_hb - hb)**2)
-    loss = [f'{iit}', f'{hb_val:.6e}']
-    with open(f'{fpm.hb_path}/hb_val.dat', 'a') as output:
-        print(*loss, file=output)
-
-    # Plot fields
-    print(f'\niit {iit} : plot')
-    tval = int(fpm.T/fpm.dt*0.5)
-    out_u = bsolver.uus[tval]
-    out_h = bsolver.hhs[tval]
-
-    plt.close("all")
-    plot_fields(fpm,hb,fsolver.true_hb,out_u,out_h)
-    plot_fourier(fpm, grid, hb,
-                fsolver.true_hb)
-
-
-    loss = np.loadtxt(f'{fpm.hb_path}/loss.dat', unpack=True)
-    plot_loss(fpm, loss)
-    plot_dg(fpm,dg,DG)
-    print(f'done iit {fpm.iit}')
+        # plot loss and val
+        # loss = np.loadtxt(f'{fpm.hb_path}/loss.dat', unpack=True)
+        # val = np.loadtxt(f'{fpm.hb_path}/hb_val.dat', unpack=True)
+        np.save(f'{fpm.hb_path}/u_loss.npy', bsolver.u_loss)
+        np.save(f'{fpm.hb_path}/h_loss.npy', bsolver.h_loss)
+        np.save(f'{fpm.hb_path}/validation.npy', bsolver.val)
+        plot_loss(fpm, bsolver.u_loss, bsolver.h_loss, bsolver.val)
+        plot_dg(fpm,dg,DG)
+        print(f'done iit {fpm.iit}')

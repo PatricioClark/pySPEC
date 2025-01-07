@@ -68,19 +68,24 @@ def reset(fpm, bpm):
 
 
 
-def plot_fields(fpm,hb,
+def plot_fields(fpm,
+                hb,
                 true_hb,
                 out_u,
-                out_h):
+                true_u,
+                out_h,
+                true_h):
     f,axs = plt.subplots(ncols=3, figsize = (15,5))
     axs[0].plot(np.linspace(0,2*np.pi, len(hb)), hb , color = 'blue', label = '$\hat{h_b}$')
     axs[0].plot(np.linspace(0,2*np.pi, len(true_hb)), true_hb , alpha = 0.6, color = 'green', label = '$h_b$')
     axs[0].legend(fontsize=14)
     axs[0].set_xlabel('x', fontsize=12)
-    axs[1].plot(np.linspace(0,2*np.pi, len(out_u)), out_u , label = '$\hat{u}$')
+    axs[1].plot(np.linspace(0,2*np.pi, len(out_u)), out_u, color = 'blue', label = '$\hat{u}$')
+    axs[1].plot(np.linspace(0,2*np.pi, len(true_u)), true_u, alpha = 0.6, color = 'green', label = '$u$')
     axs[1].legend(fontsize=14)
     axs[1].set_xlabel('x', fontsize=12)
-    axs[2].plot(np.linspace(0,2*np.pi, len(out_h)), out_h , label = '$\hat{h}$')
+    axs[2].plot(np.linspace(0,2*np.pi, len(out_h)), out_h, color = 'blue', label = '$\hat{h}$')
+    axs[2].plot(np.linspace(0,2*np.pi, len(true_h)), true_h, alpha = 0.6, color = 'green', label = '$h$')
     axs[2].legend(fontsize=14)
     axs[2].set_xlabel('x', fontsize=12)
     plt.savefig(f'{fpm.hb_path}/fields.png')
@@ -124,18 +129,17 @@ def plot_fourier(fpm, grid, hb,
     plt.savefig(f'{fpm.hb_path}/fft_hb')
 
 
-def plot_loss(fpm, loss):
+def plot_loss(fpm, u_loss, h_loss, val):
     plt.figure()
-    plt.semilogy(loss[0], loss[1], label = '$(u-\hat{u})^2$')
-    plt.semilogy(loss[0], loss[2], label = '$(h- \hat{h})^2$')
+    plt.semilogy(u_loss, label = '$(u-\hat{u})^2$')
+    plt.semilogy(h_loss, label = '$(h- \hat{h})^2$')
     plt.xlabel('epochs', fontsize=12)
     plt.ylabel('Square Error', fontsize=12)
     plt.legend(fontsize=14)
     plt.savefig(f'{fpm.hb_path}/loss.png')
 
-    val = np.loadtxt(f'{fpm.hb_path}/hb_val.dat', unpack=True)
     plt.figure()
-    plt.semilogy(val[0], val[1], label = '$(h_b-\hat{h_b})^2$')
+    plt.semilogy(val, label = '$(h_b-\hat{h_b})^2$')
     plt.xlabel('epochs', fontsize=12)
     plt.ylabel('Square Error', fontsize=12)
     plt.legend(fontsize=14)

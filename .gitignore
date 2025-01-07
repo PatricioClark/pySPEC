@@ -1,6 +1,5 @@
 output
 figures
-params.json
 *.png
 *.gif
 *.dat

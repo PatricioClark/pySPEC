@@ -1,0 +1,21 @@
+{
+    "Lx": 1.0,
+    "Nx": 1024,
+    "T": 5,
+    "dt": 1e-4,
+    "make_data": 1,
+    "iit0": 0,
+    "iitN": 100,
+    "iit":0,
+    "rkord": 2,
+    "bstep": 250,
+    "ostep": 1,
+    "plot_step":250,
+    "stat": 0,
+    "g": 5,
+    "h0": 0.2,
+    "out_path": "./examples/time_marching_swhd1D_DG-scaled/outs",
+    "hb_path":"./examples/time_marching_swhd1D_DG-scaled",
+    "field_path": "./examples/adjoint_lbfgs_new/forward_swhd/outs",
+    "data_path": "./examples/time_marching_swhd1D_GS-scaled/outs"
+}
