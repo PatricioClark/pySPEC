@@ -26,6 +26,9 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.swhd = swhd_instance
         self.grid = ps.Grid1D(pm)
         self.inverse_u = pm.inverse_u
+        self.noise = pm.noise
+        self.uum_noise_std = pm.uum_noise_std
+        self.hhm_noise_std = pm.hhm_noise_std
         self.iit = pm.iit
         self.iitN = pm.iitN
         self.Nt = round(pm.T/pm.dt)
@@ -53,10 +56,16 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.Ns = None
         self.kN = None
 
+    def add_noise(self, field, mean=0.0, std=1.0):
+        noise = np.random.normal(loc=mean, scale=std, size=field.shape)
+        return field + noise
 
     def get_measurements(self):
         self.uums = np.load(f'{self.data_path}/uums.npy')[:self.total_steps, :] # all uu fields in time
         self.hhms = np.load(f'{self.data_path}/hhms.npy')[:self.total_steps, :] # all hh fields in time
+        if self.noise:
+            self.uums = self.add_noise(self.uums, std=self.uum_noise_std)
+            self.hhms = self.add_noise(self.hhms, std=self.hhm_noise_std)
 
     def sparsify_mms(self, field, st = 1, sx = 1, N = 1024):
             '''Returns sparse signal, number of sparse measurements and Nyquist frequency'''
