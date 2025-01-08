@@ -184,5 +184,6 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
         np.save(f'{fpm.hb_path}/h_loss.npy', bsolver.h_loss)
         np.save(f'{fpm.hb_path}/validation.npy', bsolver.val)
         plot_loss(fpm, bsolver.u_loss, bsolver.h_loss, bsolver.val)
-        plot_dg(fpm,dg,DG)
+        if pm.optimizer == 'lbfgs':
+            plot_dg(fpm,dg,DG)
         print(f'done iit {fpm.iit}')
