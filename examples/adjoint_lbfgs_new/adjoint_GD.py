@@ -42,12 +42,6 @@ bsolver.get_measurements()
 # total number of iterations
 total_iterations = bpm.iitN - bpm.iit0 - 1
 
-# remove all files from hb_path if restarting GD
-check_dir(bpm.hb_path)
-
-# restart from iit0
-reset(fpm, bpm)
-
 # Initial conditions
 v1 = 0.00025
 v2 =  0.5
@@ -63,13 +57,21 @@ hh0 = fpm.h0 + c1 * np.exp(-((grid.xx - np.pi/c3) ** 2) / c2 ** 2)
 fsolver.update_true_hb()
 bsolver.update_true_hb()
 
+# remove all files from hb_path if restarting GD
+check_dir(bpm.hb_path)
 
-# Initial hb ansatz
-hb = np.zeros_like(fsolver.true_hb)
-dg = np.zeros_like(fsolver.true_hb)
-# update hb and dg
+# restart from iit0
+hb, dg = reset(fpm, bpm, fsolver, bsolver)
+
+# update hb and dg in forward solver
 fsolver.update_hb(hb)
-fsolver.update_dg(dg)
+bsolver.update_hb(hb)
+bsolver.update_dg(dg)
+
+# update fields and initialize hbs history in backward solver
+bsolver.update_fields(fsolver)
+bsolver.update_hbs(pm.iit0)
+bsolver.update_dgs(pm.iit0)
 
 # choose gradient descent optimizer
 if pm.optimizer == 'lbfgs':
@@ -109,6 +111,8 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
     # Forward integration
     print(f'iit {iit} : evolving forward')
     fsolver.evolve(fields, fpm.T, bstep=fpm.bstep, ostep=fpm.ostep)
+
+    # update fields for backward integration
     bsolver.update_fields(fsolver)
 
     # Null initial conditions for adjoint state
@@ -137,34 +141,31 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
     elif pm.optimizer == 'sgd':
         hb, opt_state = update(hb, dg, opt_state)
 
-    # update hb and dg
+    # update hb
     fsolver.update_hb(hb)
-    fsolver.update_dg(dg)
 
+    bsolver.update_hb(hb)
+    bsolver.update_hbs(iit)
+    bsolver.update_dg(dg)
+    bsolver.update_dgs(iit)
     # save for the following iteration
     print(f'\niit {iit} : save hb')
     bsolver.update_loss(iit-1)
     bsolver.update_val(iit-1)
-
-    # save loss
-    # loss = [f'{iit}', f'{u_loss:.6e}' , f'{h_loss:.6e}']
-    # with open(f'{fpm.hb_path}/loss.dat', 'a') as output:
-    #     print(*loss, file=output)
-
-    # calculate validation
-    # save validation
-    # val = [f'{iit}', f'{hb_val:.6e}']
-    # with open(f'{fpm.hb_path}/hb_val.dat', 'a') as output:
-    #     print(*val, file=output)
 
     if iit%pm.ckpt==0:
         # Plot fields
         print(f'\niit {iit} : plot')
         tval = int(fpm.T/fpm.dt*0.5)
         out_u = bsolver.uus[tval]
-        true_u = bsolver.uums[tval]
         out_h = bsolver.hhs[tval]
-        true_h = bsolver.hhms[tval]
+
+        if pm.noise:
+            true_u = bsolver.uums_[tval]
+            true_h = bsolver.hhms_[tval]
+        else:
+            true_u = bsolver.uums[tval]
+            true_h = bsolver.hhms[tval]
 
         plt.close("all")
         plot_fields(fpm,
@@ -183,7 +184,11 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
         np.save(f'{fpm.hb_path}/u_loss.npy', bsolver.u_loss)
         np.save(f'{fpm.hb_path}/h_loss.npy', bsolver.h_loss)
         np.save(f'{fpm.hb_path}/validation.npy', bsolver.val)
+        np.save( f'{fpm.hb_path}/hbs.npy', bsolver.hbs)
+        np.save( f'{fpm.hb_path}/dgs.npy', bsolver.dgs)
+
         plot_loss(fpm, bsolver.u_loss, bsolver.h_loss, bsolver.val)
         if pm.optimizer == 'lbfgs':
             plot_dg(fpm,dg,DG)
+        plot_hbs(fpm, fsolver.true_hb, bsolver.hbs)
         print(f'done iit {fpm.iit}')

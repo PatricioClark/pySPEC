@@ -31,16 +31,12 @@ class SWHD_1D(PseudoSpectral):
         self.hhs = None
         self.hb = None
         self.true_hb = None
-        self.dg = None
 
     def update_true_hb(self):
         self.true_hb = np.load(f'{self.data_path}/hb.npy')
 
     def update_hb(self, hb):
         self.hb = hb
-
-    def update_dg(self, dg):
-        self.dg = dg
 
     def rkstep(self, fields, prev, oo):
         # Unpack

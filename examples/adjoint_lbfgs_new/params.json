@@ -11,7 +11,7 @@
     "sx": 1,
     "optimizer": "lbfgs",
     "make_data": 0,
-    "iit0": 0,
+    "iit0": 7,
     "iitN": 100,
     "iit":0,
     "ckpt":1,

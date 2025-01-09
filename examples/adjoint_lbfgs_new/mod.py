@@ -25,23 +25,13 @@ def check_dir(directory):
     else:
         print(f"Directory '{directory}' already exists.")
 
+def update_npy_file(npy_path, iit0):
+    file = np.load(f'{npy_path}')
+    storage = np.full(file.shape, np.nan, dtype=np.float64)
+    storage[:iit0] = file[:iit0]
+    return storage
 
-def update_loss_file(loss_file, iit0):
-    '''Kills lines bigger than the starting iteration step in .dat files'''
-    # Step 1: Read the existing loss file, if it exists
-    filtered_lines = []
-    if os.path.exists(loss_file):
-        with open(loss_file, 'r') as f:
-            for line in f:
-                iter_num = int(line.split()[0])  # Get the iteration number from each line
-                if iter_num < iit0:
-                    filtered_lines.append(line)  # Keep lines with iterations less than current iit
-
-    # Step 2: Write back the filtered lines to the file (overwrite it)
-    with open(loss_file, 'w') as f:
-        f.writelines(filtered_lines)
-
-def reset(fpm, bpm):
+def reset(fpm, bpm, fsolver, bsolver):
     '''removes files if iit0 is set to 0. If not, restarts last run from last iit0'''
     if fpm.iit0 == 0:
         print('remove hbs content')
@@ -54,17 +44,28 @@ def reset(fpm, bpm):
             file_path = os.path.join(fpm.out_path, filename)
             if os.path.isfile(file_path):
                 os.remove(file_path)  # Remove the file
-        print('remove forward content')
+        print('remove backward content')
         for filename in os.listdir(bpm.out_path):
             file_path = os.path.join(bpm.out_path, filename)
             if os.path.isfile(file_path):
                 os.remove(file_path)  # Remove the file
+        # Initial hb ansatz
+        hb = np.zeros_like(fsolver.true_hb)
+        dg = np.zeros_like(fsolver.true_hb)
     else:
         fpm.iit = fpm.iit0
         bpm.iit = bpm.iit0
         # handle .dat files if restarting from a previous run
-        update_loss_file(f'{fpm.hb_path}/loss.dat', bpm.iit0)
-        update_loss_file(f'{fpm.hb_path}/hb_val.dat', bpm.iit0)
+
+        bsolver.u_loss = update_npy_file(fpm.hb_path+'/u_loss.npy', bpm.iit0)
+        bsolver.h_loss = update_npy_file(fpm.hb_path+'/h_loss.npy', bpm.iit0)
+        bsolver.val = update_npy_file(fpm.hb_path+'/validation.npy', bpm.iit0)
+        bsolver.hbs = update_npy_file(fpm.hb_path+'/hbs.npy', bpm.iit0)
+        bsolver.dgs = update_npy_file(fpm.hb_path+'/dgs.npy', bpm.iit0)
+        hb = bsolver.hbs[bpm.iit0-1]
+        dg = bsolver.dgs[bpm.iit0-1]
+    return hb, dg
+
 
 
 
@@ -154,3 +155,14 @@ def plot_dg(fpm,dg,DG):
     ax[1].set_xlabel('x', fontsize=12)
     ax[1].legend(fontsize=14)
     plt.savefig(f'{fpm.hb_path}/dg.png')
+
+def plot_hbs(fpm, true_hb, hbs):
+    plt.figure()
+    plt.plot(np.linspace(0,2*np.pi, len(hbs[0])), hbs[0] , color = 'blue', linestyle = '--', alpha = 0.7, label = '$\hat{h_b}$')
+    for iteration in np.arange(0,fpm.iitN, fpm.ckpt):
+        plt.plot(np.linspace(0,2*np.pi, len(hbs[iteration])), hbs[iteration] , color = 'blue', linestyle = '--', alpha = 0.7)
+
+    plt.plot(np.linspace(0,2*np.pi, len(true_hb)), true_hb , alpha = 0.6, color = 'green', label = '$h_b$')
+    plt.legend(fontsize=14)
+    plt.xlabel('x', fontsize=12)
+    plt.savefig(f'{fpm.hb_path}/hbs.png')

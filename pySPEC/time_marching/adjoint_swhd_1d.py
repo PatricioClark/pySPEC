@@ -31,12 +31,16 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.hhm_noise_std = pm.hhm_noise_std
         self.iit = pm.iit
         self.iitN = pm.iitN
+        self.ckpt = pm.ckpt
         self.Nt = round(pm.T/pm.dt)
         self.total_steps =  round(self.pm.T/self.pm.dt)
         self.data_path = pm.data_path
         self.field_path = pm.field_path
         self.hb_path = pm.hb_path
         self.hb = None
+        self.hbs = None
+        self.dg = None
+        self.dgs = None
         self.true_hb = None
         self.hx_uu = None
         self.h_ux = None
@@ -44,6 +48,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.hhs = None
         self.uums = None
         self.hhms = None
+        self.uums_ = None # not none if noise is added to measurements
+        self.hhms_ = None # not none if noise is added to measurements
         self.forced_uus = None
         self.forced_hhs = None
         self.u_loss = None
@@ -64,6 +70,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.uums = np.load(f'{self.data_path}/uums.npy')[:self.total_steps, :] # all uu fields in time
         self.hhms = np.load(f'{self.data_path}/hhms.npy')[:self.total_steps, :] # all hh fields in time
         if self.noise:
+            self.uums_ = self.uums # to keep pure measurements
+            self.hhms_ = self.hhms # to keep pure measurements
             self.uums = self.add_noise(self.uums, std=self.uum_noise_std)
             self.hhms = self.add_noise(self.hhms, std=self.hhm_noise_std)
 
@@ -104,7 +112,6 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.swhd = swhd_instance
         self.uus = self.swhd.uus # all uu fields in time
         self.hhs = self.swhd.hhs # all hh fields in time
-        self.hb = self.swhd.hb
 
     # def sparsify(self):
     #     self.uuforcings = self.uus -self.uums[:self.Nt,:]
@@ -121,6 +128,18 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         val = np.sum((self.true_hb - self.hb)**2)
         self.val = self.save_to_ram(self.val, val, iit, self.iitN, dtype=np.float64)
 
+    def update_hb(self, hb):
+        self.hb = hb
+
+    def update_hbs(self, iit):
+        self.hbs = self.save_to_ram(self.hbs, self.hb, iit, self.iitN, dtype=np.float64)
+
+
+    def update_dg(self, dg):
+        self.dg = dg
+
+    def update_dgs(self, iit):
+        self.dgs = self.save_to_ram(self.dgs, self.dg, iit, self.iitN, dtype=np.float64)
 
     def sparsify(self, signal, s=1, N=1024):
         '''Masks signal to make sparse measurements every s points.
@@ -132,13 +151,6 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         signal_sparse[::s] = signal[::s]
 
         return signal_sparse,kN,Ns
-
-
-
-
-
-
-
 
     def rkstep(self, fields, prev, oo):
         # Unpack
