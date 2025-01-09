@@ -160,21 +160,33 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
         out_u = bsolver.uus[tval]
         out_h = bsolver.hhs[tval]
 
+        plt.close("all")
         if pm.noise:
             true_u = bsolver.uums_[tval]
             true_h = bsolver.hhms_[tval]
+            noise_u = bsolver.uums[tval]
+            noise_h = bsolver.hhms[tval]
+            plot_fields(fpm,
+                        hb,
+                        fsolver.true_hb,
+                        out_u,
+                        true_u,
+                        out_h,
+                        true_h,
+                        noise_u,
+                        noise_h)
         else:
             true_u = bsolver.uums[tval]
             true_h = bsolver.hhms[tval]
+            plot_fields(fpm,
+            hb,
+            fsolver.true_hb,
+            out_u,
+            true_u,
+            out_h,
+            true_h)
 
-        plt.close("all")
-        plot_fields(fpm,
-                    hb,
-                    fsolver.true_hb,
-                    out_u,
-                    true_u,
-                    out_h,
-                    true_h)
+
         plot_fourier(fpm, grid, hb,
                     fsolver.true_hb)
 

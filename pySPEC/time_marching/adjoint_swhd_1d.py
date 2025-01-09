@@ -118,8 +118,13 @@ class Adjoint_SWHD_1D(PseudoSpectral):
     #     self.hhforcings = self.hhs -self.hhms[:self.Nt,:]
 
     def update_loss(self, iit):
-        u_loss = np.sum((self.uums - self.uus)**2)
-        h_loss = np.sum((self.uums - self.uus)**2)
+        if self.noise:
+            u_loss = np.sum((self.uums_ - self.uus)**2)
+            h_loss = np.sum((self.hhms_ - self.hhs)**2)
+
+        else:
+            u_loss = np.sum((self.uums - self.uus)**2)
+            h_loss = np.sum((self.hhms - self.hhs)**2)
 
         self.u_loss = self.save_to_ram(self.u_loss, u_loss, iit, self.iitN, dtype=np.float64)
         self.h_loss = self.save_to_ram(self.h_loss, h_loss, iit, self.iitN, dtype=np.float64)

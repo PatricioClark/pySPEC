@@ -75,18 +75,26 @@ def plot_fields(fpm,
                 out_u,
                 true_u,
                 out_h,
-                true_h):
+                true_h,
+                noise_u=None,
+                noise_h=None):
     f,axs = plt.subplots(ncols=3, figsize = (15,5))
     axs[0].plot(np.linspace(0,2*np.pi, len(hb)), hb , color = 'blue', label = '$\hat{h_b}$')
     axs[0].plot(np.linspace(0,2*np.pi, len(true_hb)), true_hb , alpha = 0.6, color = 'green', label = '$h_b$')
     axs[0].legend(fontsize=14)
     axs[0].set_xlabel('x', fontsize=12)
-    axs[1].plot(np.linspace(0,2*np.pi, len(out_u)), out_u, color = 'blue', label = '$\hat{u}$')
-    axs[1].plot(np.linspace(0,2*np.pi, len(true_u)), true_u, alpha = 0.6, color = 'green', label = '$u$')
+    axs[1].plot(np.linspace(0,2*np.pi, len(out_u)), out_u, color = 'blue', linestyle= '--', label = '$\hat{u}$')
+    axs[1].plot(np.linspace(0,2*np.pi, len(true_u)), true_u, alpha = 1, color = 'green', label = '$u$')
+    if fpm.noise:
+        axs[1].plot(np.linspace(0,2*np.pi, len(noise_u)), noise_u, alpha = 0.5, color = 'red', label = '$u+\epsilon$')
+
     axs[1].legend(fontsize=14)
     axs[1].set_xlabel('x', fontsize=12)
-    axs[2].plot(np.linspace(0,2*np.pi, len(out_h)), out_h, color = 'blue', label = '$\hat{h}$')
-    axs[2].plot(np.linspace(0,2*np.pi, len(true_h)), true_h, alpha = 0.6, color = 'green', label = '$h$')
+    axs[2].plot(np.linspace(0,2*np.pi, len(out_h)), out_h, color = 'blue', linestyle= '--', label = '$\hat{h}$')
+    axs[2].plot(np.linspace(0,2*np.pi, len(true_h)), true_h, alpha = 1, color = 'green', label = '$h$')
+    if fpm.noise:
+        axs[2].plot(np.linspace(0,2*np.pi, len(noise_h)), noise_h, alpha = 0.5, color = 'red', label = '$h+\epsilon$')
+
     axs[2].legend(fontsize=14)
     axs[2].set_xlabel('x', fontsize=12)
     plt.savefig(f'{fpm.hb_path}/fields.png')
