@@ -20,6 +20,9 @@ class SWHD_1D(PseudoSpectral):
         super().__init__(pm)
         self.grid = ps.Grid1D(pm)
         self.make_data = pm.make_data
+        self.noise = pm.noise
+        self.uum_noise_std = pm.uum_noise_std
+        self.hhm_noise_std = pm.hhm_noise_std
         self.iit = pm.iit
         self.iit0 = pm.iit0
         self.iitN = pm.iitN
@@ -29,6 +32,8 @@ class SWHD_1D(PseudoSpectral):
         self.hb_path = pm.hb_path
         self.uus = None
         self.hhs = None
+        self.uus_noise = None
+        self.hhs_noise = None
         self.hb = None
         self.true_hb = None
 
@@ -125,6 +130,10 @@ class SWHD_1D(PseudoSpectral):
         fp[step] = new_data
         del fp  # Force the file to flush and close
 
+    def add_noise(self, field, mean=0.0, std=1.0):
+        noise = np.random.normal(loc=mean, scale=std, size=field.shape)
+        return field + noise
+
     def outs(self, fields, step):
         uu = self.grid.inverse(fields[0])
         self.uus = self.save_to_ram(self.uus, uu, int(step/self.pm.ostep), int(self.total_steps/self.pm.ostep), dtype=np.float64)
@@ -132,6 +141,12 @@ class SWHD_1D(PseudoSpectral):
         hh = self.grid.inverse(fields[1])
         self.hhs = self.save_to_ram(self.hhs, hh, int(step/self.pm.ostep), int(self.total_steps/self.pm.ostep), dtype=np.float64)
         if self.make_data and (step == self.total_steps-1):
+            if self.noise:
+                self.uus_noise = self.add_noise(self.uus, std=self.uum_noise_std)
+                self.hhs_noise = self.add_noise(self.hhs, std=self.hhm_noise_std)
+                np.save(f'{self.pm.out_path}/uums_noise', self.uus_noise)
+                np.save(f'{self.pm.out_path}/hhms_noise', self.hhs_noise)
+
             np.save(f'{self.pm.out_path}/uums', self.uus)
             np.save(f'{self.pm.out_path}/hhms', self.hhs)
 

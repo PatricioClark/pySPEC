@@ -132,16 +132,22 @@ plot_time_lapse(H ,steps, Lx = pm.Lx , Nx = pm.Nx,
                     label = '$h(x,t)$',
                     interval = 200 ,
                     fps = 5 )
-'''plot_time_lapse_two_fields(H,
-                               hb,
-                               steps,
-                               Lx = pm.Lx,
-                               Nx = pm.Nx,
-                               name = f'{param_path}/h_hb.gif',
-                               color1='brown',
-                               color2='blue',
-                               label1='$h(x,t)$',
-                               label2='$h_b(x)$',
-                               limit=False,
-                               interval=200,
-                               fps=5)'''
+
+if pm.noise:
+    # load frames
+    steps = int(pm.T/pm.dt) # total steps of the simulation
+    U = np.load(f'{pm.out_path}/uums_noise.npy')[::pm.plot_step]
+    H = np.load(f'{pm.out_path}/hhms_noise.npy')[::pm.plot_step]
+    # plot gifs for u and h and save to out_path
+    plot_time_lapse(U ,steps, Lx = pm.Lx , Nx = pm.Nx,
+                    name = f'{param_path}/u_noise.gif',
+                        color = 'blue' ,
+                        label = '$u(x,t)$',
+                        interval = 200 ,
+                        fps = 5 )
+    plot_time_lapse(H ,steps, Lx = pm.Lx , Nx = pm.Nx,
+                    name = f'{param_path}/h_noise.gif',
+                        color = 'green' ,
+                        label = '$h(x,t)$',
+                        interval = 200 ,
+                        fps = 5 )
