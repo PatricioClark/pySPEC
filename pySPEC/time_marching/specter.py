@@ -67,6 +67,13 @@ class SPECTER(Wrapper):
             fields.append(np.fromfile(file,dtype=np.float64).reshape(self.grid.shape,order='F'))
         return fields
 
+    def get_nu_kappa(self, gamma = 1):
+        '''Calculates nu and kappa from ra. Assumes gamma = 1, h = 3.14159'''
+        '''If different gammas are used, formula should be changed (nu neq kappa)'''
+        nu = np.sqrt(gamma**2 * self.pm.Lz**4 / self.pm.ra)
+        return nu, nu
+
+
     def ch_params(self, T, bstep = 0, ostep=0, opath = ''):
         '''Changes parameter.inp to update T, and sx '''
         with open('parameter.inp', 'r') as file:
@@ -83,6 +90,12 @@ class SPECTER(Wrapper):
                 lines[i] = f'odir_newt = "{opath}" !output for saved fields\n'
             if line.startswith('dt'): #modifies dt (does not change throughout algorithm)
                 lines[i] = f'dt = {self.pm.dt}   ! time step\n'
+
+            nu, kappa = self.get_nu_kappa()
+            if line.startswith('nu'): #modifies ra (does not change throughout algorithm)
+                lines[i] = f'nu = {nu:.3e}         ! kinematic viscosity\n'
+            if line.startswith('kappa'): #modifies ra (does not change throughout algorithm)
+                lines[i] = f'kappa = {kappa:.4e}      ! scalar difussivity\n'
 
         #write
         with open('parameter.inp', 'w') as file:
