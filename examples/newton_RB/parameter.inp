@@ -2,7 +2,7 @@
 &status
 idir = "bin_tmp/"     ! location of binary input
 odir = "bin_tmp/"     ! destination for binary output
-tdir = "../../tables/"  ! location of FC-Gram tables
+tdir = "tables/"  ! location of FC-Gram tables
 stat = 2       !Last binary file if restarting an old run
 mult = 1             ! timestep multiplier
 bench = 0            ! benchmark mode if 1
@@ -33,7 +33,7 @@ f0 = 0.0             ! amplitude of the mechanical forcing
 u0 = 0.00            ! amplitude of the initial velocity field
 kdn = 2.00           ! minimum wavenumber
 kup = 2.00           ! maximum wavenumber
-nu = 9.86e-3         ! kinematic viscosity
+nu = 9.870e-03         ! kinematic viscosity
 fparam0 = 0.9        ! fparam0-9 can be used to control the forcing
 vparam0 = 0.10        ! idem for the initial velocity field
 /
@@ -61,7 +61,7 @@ s0 = 0.0             ! amplitude of the scalar's forcing
 c0 = .05              ! amplitude of the initial scalar concentration
 skdn = 3.00          ! scalar minimum wavenumber
 skup = 8.00          ! scalar maximum wavenumber
-kappa = 9.86e-3      ! scalar difussivity
+kappa = 9.8696e-03      ! scalar difussivity
 sparam0 = 0.0        ! sparam0-9 can be used to control the scalar's forcing
 cparam0 = 2.0        ! idem for the initial concentration field
 cparam1 = 5.0
@@ -77,7 +77,7 @@ szend  = 0.0         ! BC value at z=Lz
 
 ! Parameters for the Newton-GMRES algorithm 
 &sca_newt
-T_guess = 11.6361822 !Initial guess for period
+T_guess = 12.0 !Initial guess for period
 odir_newt = "" !output for saved fields
 alpha = 0.01 !ratio dt1/dt
 N1 = 0 !steps to perform with smaller time step (previous value 5000)

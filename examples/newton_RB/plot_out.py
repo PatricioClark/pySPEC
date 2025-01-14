@@ -1,23 +1,17 @@
 import numpy as np 
 import matplotlib.pyplot as plt
-from types import SimpleNamespace
 import json
 
 import pySPEC as ps
 from pySPEC.time_marching import KolmogorovFlow
 from pySPEC.newton import UPO
-# import mod2D as mod
+import params as pm
 
-
-pm = json.load(open('params.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 pm.Lx = 2*np.pi*pm.L
 pm.Ly = 2*np.pi*pm.L
 
-# Load Newton parameters
-pmN = json.load(open('params_newton.json', 'r'), object_hook=lambda d: SimpleNamespace(**d))
 # Initialize solver
 grid   = ps.Grid2D(pm)
-# grid   = mod.Grid(pm)
 solver = KolmogorovFlow(pm)
 
 
