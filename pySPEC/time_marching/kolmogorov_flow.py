@@ -73,11 +73,11 @@ class KolmogorovFlow(PseudoSpectral):
     def injection(self, fields, forcing):
         return self.grid.avg(self.grid.inner(fields, forcing))
 
-    def outs(self, fields, step, path):
+    def outs(self, fields, step, opath):
         uu = self.grid.inverse(fields[0])
         vv = self.grid.inverse(fields[1])
-        np.save(f'{path}uu_{step:0{self.pm.ext}}', uu)
-        np.save(f'{path}vv_{step:0{self.pm.ext}}', vv)
+        np.save(f'{opath}uu_{step:0{self.pm.ext}}', uu)
+        np.save(f'{opath}vv_{step:0{self.pm.ext}}', vv)
 
     def balance(self, fields, step, bpath):
         eng = self.grid.energy(fields)
