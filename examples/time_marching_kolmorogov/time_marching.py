@@ -33,16 +33,44 @@ uu = grid.inverse(fu)
 vv = grid.inverse(fv)
 fields = [uu, vv]
 
+# Plot initial conditions
+# fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+# ax[0].imshow(uu.T, cmap='viridis')
+# ax[0].set_title('uu')
+# ax[1].imshow(vv.T, cmap='viridis')
+# ax[1].set_title('vv')
+# plt.savefig(f'fields_ic.png', dpi = 300)
+# plt.show()
+
+
 # Evolve
 fields = solver.evolve(fields, pm.T, bstep=pm.bstep)
 
-# Plot Balance
+# # Plot Balance
 bal = np.loadtxt('balance.dat', unpack=True)
 plt.plot(bal[0], bal[1])
 
 # Plot fields
 uu, vv = fields
 u2 = uu**2 + vv**2
-plt.figure()
-plt.imshow(u2)
+# plt.figure()
+# plt.imshow(u2)
+# plt.savefig('u2.png', dpi = 300)
+# plt.show()
+
+# Plot output
+fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+ax[0].imshow(uu, cmap='viridis')
+ax[0].set_title('uu')
+ax[1].imshow(vv, cmap='viridis')
+ax[1].set_title('vv')
+plt.savefig(f'fields.png', dpi = 300)
 plt.show()
+
+# oz = solver.oz([uu, vv])
+
+# plt.figure()
+# plt.imshow(oz, cmap='viridis')
+# plt.title('oz')
+# plt.savefig(f'oz.png', dpi = 300)
+# plt.show()

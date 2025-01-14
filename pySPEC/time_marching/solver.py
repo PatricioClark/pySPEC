@@ -31,24 +31,24 @@ class Solver(abc.ABC):
         self.grid: ps.Grid1D | ps.Grid2D
 
     @abc.abstractmethod
-    def evolve(self, fields, T, bstep=None, sstep=None, ostep=None):
+    def evolve(self, fields, T, bstep=None, ostep=None, sstep=None, bpath = '', opath = '', spath = ''):
         return []
 
-    def balance(self, fields, step):
+    def balance(self, fields, step, bpath):
         pass
 
-    def spectra(self, fields, step):
+    def spectra(self, fields, step, spath):
         pass
 
-    def outs(self, fields, step):
+    def outs(self, fields, step, opath):
         pass
 
-    def write_outputs(self, fields, step, bstep, sstep, ostep):
-        if bstep is not None and step%bstep==0:
-            self.balance(fields, step)
+    def write_outputs(self, fields, step, bstep, ostep, sstep, bpath, opath, spath, final = False):
+        if bstep is not None and (step%bstep==0 or final):
+            self.balance(fields, step, bpath)
 
-        if sstep is not None and step%sstep==0:
-            self.spectra(fields, step)
+        if sstep is not None and (step%sstep==0 or final):
+            self.spectra(fields, step, spath)
             
-        if ostep is not None and step%ostep==0:
-            self.outs(fields, step)
+        if ostep is not None and (step%ostep==0 or final):
+            self.outs(fields, step, opath)

@@ -1,4 +1,13 @@
 output
+RB
+SPECTER_Newton
+build
+pySPEC.egg-info
+kolmog
 figures
 params.json
+examples/newton_kolmog/balance/
+examples/newton_kolmog/output/
+examples/newton_kolmog/prints/
+examples/newton_RB/src
 **/__pycache__/

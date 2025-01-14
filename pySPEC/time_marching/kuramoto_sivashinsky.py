@@ -39,7 +39,7 @@ class KuramotoSivashinsky(PseudoSpectral):
         uu = self.grid.inverse(fields[0])
         np.save(f'uu_{step:04}', uu)
 
-    def balance(self, fields, step):
+    def balance(self, fields, step, bpath):
         eng = self.grid.energy(fields)
         bal = [f'{self.pm.dt*step:.4e}', f'{eng:.6e}']
         with open('balance.dat', 'a') as output:
