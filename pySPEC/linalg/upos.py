@@ -1,4 +1,4 @@
-from .newton import NewtonSolver
+from .linalg import NewtonSolver
 from .gmres import GMRES, backsub
 import os
 import numpy as np

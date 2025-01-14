@@ -155,7 +155,7 @@ class Grid2D_semi(Grid1D):
         self.kx = kx
 
         self.N = pm.Nx*pm.Nz # Ny is equal to 1
-        self.shape = (pm.Nx, 1, pm.Nz)
+        self.shape = (pm.Nx, pm.Nz)
 
     @staticmethod
     def forward(ui):

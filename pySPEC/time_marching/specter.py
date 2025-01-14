@@ -59,11 +59,11 @@ class SPECTER(Solver):
 
     def load_fields(self, path = 'bin_tmp', idx = 1): 
         '''Loads binary fields. idx = 1 for default read in bin_temp '''
+        shape = (self.pm.Nx, 1, self.pm.Nz) #add Ny=1 for SPECTER to read
         fields = []
-
         for ftype in self.ftypes:
             file = f'{path}/{ftype}.{idx:0{self.pm.ext}}.out'
-            fields.append(np.fromfile(file,dtype=np.float64).reshape(self.grid.shape,order='F'))
+            fields.append(np.fromfile(file,dtype=np.float64).reshape(shape,order='F'))
         return fields
 
     def get_nu_kappa(self, gamma = 1):
@@ -71,7 +71,6 @@ class SPECTER(Solver):
         '''If different gammas are used, formula should be changed (nu neq kappa)'''
         nu = np.sqrt(gamma**2 * self.pm.Lz**4 / self.pm.ra)
         return nu, nu
-
 
     def ch_params(self, T, bstep = 0, ostep=0, opath = ''):
         '''Changes parameter.inp to update T, and sx '''

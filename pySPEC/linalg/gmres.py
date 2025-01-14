@@ -166,7 +166,12 @@ def initialize_vectors(rN, n):
     return Q, H, beta, cs, sn
 
 
+def arnoldi_eig():
+    pass
+
 if __name__ == '__main__':
+
+    # test()
 
     print('')
     m = 100
