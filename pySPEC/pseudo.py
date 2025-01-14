@@ -44,6 +44,10 @@ class Grid1D:
         ''' First derivative in ki direction '''
         return 1.0j*ki*ui
 
+    def avg(self, ui):
+        ''' Mean in Fourier space '''
+        return self.norm * (np.sum(ui[:, 0]) + 2.0*np.sum(ui[:, 1:]))
+
     @staticmethod
     def inner(a, b):
         ''' Inner product '''
@@ -51,13 +55,6 @@ class Grid1D:
         for ca, cb in zip(a, b):
             prod += (ca*cb.conjugate()).real
         return prod
-
-    def avg(self, ui):
-        ''' Mean in Fourier space '''
-        # Create a mask for the last index (where rfft halves size) being greater than 0
-        mask = np.indices(ui.shape)[-1] > 0
-        ui[mask] *= 2 # Factor 2 to account for negative frequencies
-        return self.norm * np.sum(ui)
 
     def energy(self, fields):
         u2  = self.inner(fields, fields)
@@ -145,8 +142,8 @@ class Grid2D(Grid1D):
         fv = fields[1]
         return self.pxx*fu + self.pxy*fv, self.pxy*fu + self.pyy*fv
 
-class Grid2D_wrap(Grid1D):
-    ''' 2D grid for SPECTER solver with non periodic boundary conditions '''
+class Grid2D_semi(Grid1D):
+    ''' 2D grid periodic only in the horizontal direction. To be used with the SPECTER wrapper '''
     def __init__(self, pm):
         super().__init__(pm)
         zi, dz = np.linspace(0, pm.Lz, pm.Nz, endpoint=False, retstep=True)
@@ -157,14 +154,16 @@ class Grid2D_wrap(Grid1D):
         self.zz = zz
         self.kx = kx
 
-        self.N = pm.Nx*pm.Ny*pm.Nz # Ny is equal to 1
-        self.shape = (pm.Nx,pm.Ny,pm.Nz)
+        self.N = pm.Nx*pm.Nz # Ny is equal to 1
+        self.shape = (pm.Nx, 1, pm.Nz)
 
-    def forward(self, ui):
+    @staticmethod
+    def forward(ui):
         ''' Forward Fourier transform '''
-        return np.fft.rfft(ui[:,0,:], axis = 0) # only 1 "y" mode
+        return np.fft.rfft(ui, axis = 0)
 
-    def inverse(self, ui):
+    @staticmethod
+    def inverse(ui):
         ''' Invserse Fourier transform '''
         ui =  np.fft.irfft(ui, axis = 0).real
-        return ui.reshape(self.shape)
+        return ui

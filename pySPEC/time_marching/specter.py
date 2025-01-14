@@ -3,11 +3,10 @@
 import numpy as np
 import subprocess
 
-from .pseudospectral import PseudoSpectral
-from .wrapper import Wrapper
+from .solver import Solver
 from .. import pseudo as ps
 
-class SPECTER(Wrapper):
+class SPECTER(Solver):
     '''
     SPECTER 2D flows solver. Solves Rayleigh-Benard if solver='BOUSS'
     '''
@@ -17,7 +16,7 @@ class SPECTER(Wrapper):
 
     def __init__(self, pm, solver = 'BOUSS', ftypes = ['vx', 'vz', 'th']):
         super().__init__(pm)
-        self.grid = ps.Grid2D_wrap(pm)    
+        self.grid = ps.Grid2D_semi(pm)
         self.solver = solver
         self.ftypes = ftypes
 

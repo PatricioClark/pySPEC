@@ -49,5 +49,5 @@ class PseudoSpectral(Solver, abc.ABC):
         return fields
 
     @abc.abstractmethod
-    def rkstep(self, fields, prev, oo):
+    def rkstep(self, fields, prev, oo, dt):
         return []

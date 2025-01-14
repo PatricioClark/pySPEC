@@ -31,16 +31,16 @@ class Solver(abc.ABC):
         self.grid: ps.Grid1D | ps.Grid2D
 
     @abc.abstractmethod
-    def evolve(self, fields, T, bstep=None, sstep=None, ostep=None):
+    def evolve(self, fields, T, bstep=None, ostep=None, sstep=None, bpath = '', opath = '', spath = ''):
         return []
-    
-    def balance(self, fields, step):
+
+    def balance(self, fields, step, bpath):
         pass
 
-    def spectra(self, fields, step):
+    def spectra(self, fields, step, spath):
         pass
 
-    def outs(self, fields, step):
+    def outs(self, fields, step, opath):
         pass
 
     def write_outputs(self, fields, step, bstep, ostep, sstep, bpath, opath, spath, final = False):
