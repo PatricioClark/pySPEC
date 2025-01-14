@@ -197,6 +197,7 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
         np.save(f'{fpm.hb_path}/h_loss.npy', bsolver.h_loss)
         np.save(f'{fpm.hb_path}/validation.npy', bsolver.val)
         np.save( f'{fpm.hb_path}/hbs.npy', bsolver.hbs)
+        np.save( f'{fpm.hb_path}/uus.npy', bsolver.uus)
         np.save( f'{fpm.hb_path}/dgs.npy', bsolver.dgs)
 
         plot_loss(fpm, bsolver.u_loss, bsolver.h_loss, bsolver.val)
