@@ -20,7 +20,7 @@ solver = KuramotoSivashinsky(pm)
 # Initial conditions
 uu = (0.3*np.cos(2*np.pi*3.0*grid.xx/pm.Lx) +
       0.4*np.cos(2*np.pi*5.0*grid.xx/pm.Lx) +
-      0.5*np.cos(2*np.pi*4.0*grid.xx/pm.Lx) 
+      0.5*np.cos(2*np.pi*4.0*grid.xx/pm.Lx)
       )
 fields = [uu]
 
@@ -39,5 +39,5 @@ for ii in range(0,int(pm.T/pm.dt), pm.ostep):
 
 acc = np.array(acc)
 plt.figure()
-plt.imshow(acc, extent=[0,22,0,100])
+plt.imshow(acc, extent=[0,pm.Lx,0,pm.T])
 plt.show()
