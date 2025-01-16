@@ -45,8 +45,11 @@ class Grid1D:
         return 1.0j*ki*ui
 
     def avg(self, ui):
-        ''' Mean in Fourier space '''
-        return self.norm * (np.sum(ui[0]) + 2.0*np.sum(ui[1:]))
+        ''' Mean in Fourier space. rfft is used, so middle modes must be doubled to account '''
+        ''' for negative frequencies. If n is even the last mode contains +fs/2 and -fs/2'''
+        tmp = 1 if len(ui) % 2 == 0 else 2
+        sum_ui = ui[0] + 2.0*np.sum(ui[1:-1]) + tmp* ui[-1]
+        return self.norm * sum_ui
 
     @staticmethod
     def inner(a, b):
@@ -141,11 +144,13 @@ class Grid2D(Grid1D):
         fu = fields[0]
         fv = fields[1]
         return self.pxx*fu + self.pxy*fv, self.pxy*fu + self.pyy*fv
-    
-    def avg(self, ui):
-        ''' Mean in Fourier space '''
-        return self.norm * (np.sum(ui[:, 0]) + 2.0*np.sum(ui[:, 1:]))
 
+    def avg(self, ui):
+        ''' Mean in Fourier space. rfft is used, so middle modes must be doubled to account '''
+        ''' for negative frequencies. If n is even the last mode contains +fs/2 and -fs/2'''
+        tmp = 1 if len(ui) % 2 == 0 else 2
+        sum_ui = np.sum(ui[:,0]) + 2.0*np.sum(ui[:,1:-1]) + tmp* np.sum(ui[:,-1])
+        return self.norm * sum_ui
 
 class Grid2D_semi(Grid1D):
     ''' 2D grid periodic only in the horizontal direction. To be used with the SPECTER wrapper '''
