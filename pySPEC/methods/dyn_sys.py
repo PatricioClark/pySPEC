@@ -1,11 +1,18 @@
-from .linalg import NewtonSolver
-from .gmres import GMRES, backsub
+from ..krylov import GMRES, backsub, arnoldi_eig
 import os
 import numpy as np
 
-class UPO(NewtonSolver):
+class DynSys():
     def __init__(self, pm, solver):
-        super().__init__(pm, solver)
+        ''' 
+        Parameters:
+        ----------
+            pm: parameters dictionary
+            solver: solver object
+        '''
+        self.pm = pm
+        self.solver = solver
+        self.grid = solver.grid
 
     def load_ic(self):
         ''' Load initial conditions '''
@@ -40,17 +47,6 @@ class UPO(NewtonSolver):
             return T[idx_restart], sx[idx_restart]
         else:
             return T[idx_restart], None
-
-    def flatten(self, fields):
-        '''Flattens fields for Newton-GMRes solver'''
-        return np.concatenate([f.flatten() for f in fields])
-
-    def unflatten(self, U):
-        '''Unflatten fields'''
-        ll = len(U)//self.solver.num_fields
-        fields = [U[i*ll:(i+1)*ll] for i in range(self.solver.num_fields)]
-        fields = [f.reshape(self.grid.shape) for f in fields]
-        return fields
 
     def flatten_dec(func):
         """Decorator that allows to work with flattened fields U instead of fields"""
@@ -174,7 +170,7 @@ class UPO(NewtonSolver):
 
         return apply_A, UT
 
-    def iterate(self, X):            
+    def run_newton(self, X):            
         '''Iterates Newton-GMRes solver until convergence'''
         for iN in range(self.pm.restart+1, self.pm.N_newt):
             # Unpack X
@@ -195,7 +191,7 @@ class UPO(NewtonSolver):
             
             # Perform GMRes iteration
             # Returns H, beta, Q such that X = Q@y, y = H^(-1)@beta
-            H, beta, Q = GMRES(apply_A, b, iN, self.pm)
+            H, beta, Q = GMRES(apply_A, b, self.pm.N_gmres, self.pm.tol_gmres, iN, self.pm.global_method)
 
             # Perform hookstep to adjust solution to trust region
             X, F_new, UT = self.hookstep(X, H, beta, Q, iN)
@@ -230,7 +226,7 @@ class UPO(NewtonSolver):
         else:
             U, T, sx = X[:-1], X[-1], 0.
         #Initial solution from GMRes in basis Q
-        y = backsub(H, beta, self.pm)
+        y = backsub(H, beta)
         #Initial trust region radius
         Delta = self.norm(y)
 
@@ -262,10 +258,9 @@ class UPO(NewtonSolver):
             F_new = self.norm(U_new-UT)
             
             lin_exp = self.norm(beta - self.pm.c * H @ y) #linear expansion of F around x (in basis Q). 
-            lin_exp_test = self.norm(beta - 1. * H @ y) #Test for checking if norm is equal to tol_gmres
-            #F(x) + A dx (A is not the jacobian because of 2 extra conditions)
+            # beta = H@y holds
 
-            self.write_hookstep(iN, iH, F_new, lin_exp, lin_exp_test)
+            self.write_hookstep(iN, iH, F_new, lin_exp)
 
             if F_new <= lin_exp:
                 break
@@ -292,7 +287,7 @@ class UPO(NewtonSolver):
                 mu = self.pm.mu0 #Initialize first nonzero value of mu
                 return y0, mu
 
-            for j in range(1, 1000): #1000 big enough to ensure that condition is satisfied
+            for _ in range(1, 1000): #1000 big enough to ensure that condition is satisfied
 
                 # Ridge regression adjustment 
                 A = A_ + mu * np.eye(A_.shape[0])
@@ -355,6 +350,43 @@ class UPO(NewtonSolver):
         with open(f'prints/hookstep/extra_iN{iN:02}.txt', 'a') as file:
             file.write(f'{Delta:.4e},{mu:.4e},{self.norm(y):.4e},{np.linalg.cond(A):.3e}\n')
 
-    def write_hookstep(self, iN, iH, F_new, lin_exp, lin_exp_test):
+    def write_hookstep(self, iN, iH, F_new, lin_exp):
         with open(f'prints/hookstep/iN{iN:02}.txt', 'a') as file:
-            file.write(f'{iH:02},{F_new:.4e},{lin_exp:.4e},{lin_exp_test:.4e}\n')
+            file.write(f'{iH:02},{F_new:.4e},{lin_exp:.4e}\n')
+
+    def floq_exp(self, X, n, tol):
+        ''' Calculates Floquet exponents of periodic orbit '''
+        ''' X: (U,T,sx) of converged periodic orbit, n: number of exponents, tol: tolerance of Arnoldi '''
+        # Unpack X
+        if self.pm.sx is not None:
+            U, T, sx = X[:-2], X[-2], X[-1]
+        else:
+            U, T, sx = X[:-1], X[-1], 0.
+
+        UT = self.evolve(U, T)
+        # Translate UT by sx and calculate derivatives
+        if self.pm.sx is not None:
+            UT = self.translate(UT, sx)
+
+        def apply_J(dU):
+            ''' Applies J (jacobian of poincare map) matrix to vector dU  '''        
+            # 1e-7 factor chosen to balance accuracy and numerical stability
+            epsilon = 1e-7*self.norm(U)/self.norm(dU)
+
+            # Perturb U by epsilon*dU
+            U_pert = U + epsilon*dU 
+
+            # Calculate derivative w.r.t. initial fields
+            dUT_dU = self.evolve(U_pert, T)
+            if self.pm.sx is not None:
+                dUT_dU = self.translate(dUT_dU,sx)    
+            dUT_dU = (dUT_dU - UT)/epsilon
+            return dUT_dU
+        
+        b = np.random.randn(len(U))
+        eigval_H, eigvec_H, Q = arnoldi_eig(apply_J, b, n, tol) 
+
+        return eigval_H, eigvec_H, Q
+
+    def lyap_exp():
+        pass
