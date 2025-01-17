@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J pepinn19
+#SBATCH -J test_K
 #SBATCH -o %x.out
 #SBATCH -N 1
 #SBATCH -n 5

@@ -164,7 +164,7 @@ class Grid2D_semi(Grid1D):
         self.zz = zz
         self.kx = kx
 
-        self.N = pm.Nx*pm.Nz # Ny is equal to 1
+        self.N = pm.Nx*pm.Nz
         self.shape = (pm.Nx, pm.Nz)
 
     @staticmethod

@@ -1,3 +1,3 @@
-from .dynsys import DynSys
+from .dyn_sys import DynSys
 
 

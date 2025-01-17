@@ -1,10 +1,10 @@
 {
     "Lx": 22.0,
     "Nx": 128,
-    "T": 100.0,
+    "T": 0.1,
     "dt": 1e-5,
     "rkord": 2,
     "bstep": 10,
-    "ostep": null,
+    "ostep": 1000,
     "stat": 0
 }

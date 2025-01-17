@@ -48,6 +48,17 @@ class DynSys():
         else:
             return T[idx_restart], None
 
+    def flatten(self, fields):
+        '''Flattens fields'''
+        return np.concatenate([f.flatten() for f in fields])
+
+    def unflatten(self, U):
+        '''Unflatten fields'''
+        ll = len(U)//self.solver.num_fields
+        fields = [U[i*ll:(i+1)*ll] for i in range(self.solver.num_fields)]
+        fields = [f.reshape(self.grid.shape) for f in fields]
+        return fields
+
     def flatten_dec(func):
         """Decorator that allows to work with flattened fields U instead of fields"""
         def wrapper(self, U, *args, **kwargs):
@@ -140,11 +151,8 @@ class DynSys():
             # 1e-7 factor chosen to balance accuracy and numerical stability
             epsilon = 1e-7*self.norm(U)/self.norm(dU)
 
-            # Perturb U by epsilon*dU
-            if not self.pm.sp1:
-                U_pert = U + epsilon*dU 
-            else:
-                U_pert = self.apply_proj(U, epsilon*dU)
+            # Perturb U by epsilon*dU and apply solenoidal projection if sp1 = True
+            U_pert = self.apply_proj(U, epsilon*dU, self.pm.sp1)
 
             # Calculate derivative w.r.t. initial fields
             dUT_dU = self.evolve(U_pert, T)
@@ -191,7 +199,7 @@ class DynSys():
             
             # Perform GMRes iteration
             # Returns H, beta, Q such that X = Q@y, y = H^(-1)@beta
-            H, beta, Q = GMRES(apply_A, b, self.pm.N_gmres, self.pm.tol_gmres, iN, self.pm.global_method)
+            H, beta, Q = GMRES(apply_A, b, self.pm.N_gmres, self.pm.tol_gmres, iN, self.pm.glob_method)
 
             # Perform hookstep to adjust solution to trust region
             X, F_new, UT = self.hookstep(X, H, beta, Q, iN)

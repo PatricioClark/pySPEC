@@ -76,8 +76,8 @@ class KolmogorovFlow(PseudoSpectral):
     def outs(self, fields, step, opath):
         uu = self.grid.inverse(fields[0])
         vv = self.grid.inverse(fields[1])
-        np.save(f'{opath}uu_{step:0{self.pm.ext}}', uu)
-        np.save(f'{opath}vv_{step:0{self.pm.ext}}', vv)
+        np.save(f'{opath}uu.{step:0{self.pm.ext}}', uu)
+        np.save(f'{opath}vv.{step:0{self.pm.ext}}', vv)
 
     def balance(self, fields, step, bpath):
         eng = self.grid.energy(fields)
@@ -90,8 +90,8 @@ class KolmogorovFlow(PseudoSpectral):
             print(*bal, file=output)
 
     def load_fields(self, path, step):
-        uu = np.load(f'{path}uu_{step:0{self.pm.ext}}.npy')
-        vv = np.load(f'{path}vv_{step:0{self.pm.ext}}.npy')
+        uu = np.load(f'{path}uu.{step:0{self.pm.ext}}.npy')
+        vv = np.load(f'{path}vv.{step:0{self.pm.ext}}.npy')
         return [uu, vv]
 
     def oz(self, fields):
