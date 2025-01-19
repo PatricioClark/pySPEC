@@ -8,6 +8,7 @@ and the 2/3 rule is used for dealiasing.
 
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 import pySPEC as ps
 from pySPEC.solvers import KolmogorovFlow
