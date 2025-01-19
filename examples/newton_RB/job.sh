@@ -6,4 +6,4 @@
 #SBATCH -t 48:00:00
 
 ml python
-python3 newton_rb.py
+python3 floq_exp.py

@@ -7,17 +7,16 @@ from matplotlib.lines import Line2D
 from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import MaxNLocator
 
-from pySPEC.solvers import KolmogorovFlow
+from pySPEC.solvers import SPECTER
 import params as pm
 
-pm.Lx = 2*np.pi*pm.L
-pm.Ly = 2*np.pi*pm.L
+pm.Lx = 2*np.pi*pm.Lx
 
 # Initialize solver
-solver = KolmogorovFlow(pm)
+solver = SPECTER(pm)
 
 def plot_fields(path, step):
-    '''Plot fields'''
+    '''Plot output'''
 
     fields = solver.load_fields(path, step)
     spath = f'Imgs/fields'
@@ -28,32 +27,6 @@ def plot_fields(path, step):
         plt.title(ftype)
         plt.savefig(f'{spath}/{ftype}.{step}.png', dpi = 300)
         plt.show()
-
-def plot_oz(path, step, convert = True):	
-    '''Plot output'''
-    if convert:
-        fields = solver.load_fields(path, step)
-        oz = solver.oz(fields)
-    else:
-        oz = np.load(f'{path}oz.{step:0{pm.ext}}.npy')
-
-    plt.figure()
-    plt.imshow(oz.T, cmap='viridis')
-    plt.title('oz')
-    plt.savefig(f'{path}oz.{step}.png', dpi = 300)
-    plt.show()
-
-def plot_forcing():
-    '''Plot forcing'''
-    fx = grid.inverse(solver.fx)
-    fy = grid.inverse(solver.fy)
-    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-    ax[0].imshow(fx.T, cmap='viridis')
-    ax[0].set_title('fx')
-    ax[1].imshow(fy.T, cmap='viridis')
-    ax[1].set_title('fy')
-    plt.savefig(f'forcing.png', dpi = 300)
-    plt.show()
 
 def GetSpacedElements(list, numElems = 4):
     '''returns evenly spaced elements from list'''
@@ -148,9 +121,13 @@ def plot_balance(iN=None, bpath = None):
     else:
         raise ValueError('No path or iN given')
 
-    t, eng, dis, inj = np.loadtxt(bpath,unpack=True)
+    t, v2, w2, eps = np.loadtxt(bpath,unpack=True)
+    t[0]= t[1] = t[2] - pm.dt # Second value is repeated (for sol_project) and first is wrong
+    t[-1] = t[-2] + pm.dt # Miscalculates last value, as dt is modified
+    eng = v2*.5 
+    dis = w2 
 
-    fig,axes = plt.subplots(1,3, figsize = (13,5))
+    fig,axes = plt.subplots(1,2, figsize = (10,5))
     axes = axes.flatten()
 
     axes[0].plot(t, eng)
@@ -163,12 +140,6 @@ def plot_balance(iN=None, bpath = None):
     axes[1].set_xlabel("$t$")
     axes[1].set_ylabel("$D$")
     axes[1].set_title(f"$|D_f - D_i|={abs(dis[-1]-dis[0]):.2e}$")
-
-    # Injection
-    axes[2].plot(t, inj)
-    axes[2].set_xlabel("$t$")
-    axes[2].set_ylabel("$I$")
-    axes[2].set_title(f"$|I_f - I_i|={abs(inj[-1]-inj[0]):.2e}$")
 
     plt.tight_layout()
 
@@ -207,6 +178,38 @@ def plot_orbit(iN):
         plt.savefig(f'Imgs/output/{type_data}.{iN:02}.png', dpi = 300)
         plt.close() 
 
+
+def plot_floq_exp(iN=None, path = None, n = 50):
+    '''
+    Plot floquet exponents. iN is the Newton iteration of saved exponents, and n is the number of calculated exponents
+    If path is given, it will be used instead of iN
+    '''
+    if path:
+        path = path
+    elif iN:
+        path = f'floq/iN{iN:02}/floq_exp_{n}.npy'
+    else:
+        raise ValueError('No path or iN given')
+    
+    eigval_H = np.load(path)
+    print('Max(|mu|)=', max(abs(eigval_H)))
+
+    fig, ax = plt.subplots(1,1, figsize = (7,7))
+    ax.plot(eigval_H.real, eigval_H.imag, 'o')
+    #Plot unit circle
+    theta = np.linspace(0, 2*np.pi, 100)
+    ax.plot(np.cos(theta), np.sin(theta), 'k--')
+    ax.set_xlabel('Re')
+    ax.set_ylabel('Im')
+    ax.set_title('Floquet exponents')
+    xlim = ax.get_xlim()
+    ax.set_ylim(xlim)
+    os.makedirs('Imgs/floq', exist_ok = True)
+    spath = f'Imgs/floq/floq_exp_{n}.png'
+    plt.savefig(spath, dpi = 300)
+    plt.close()    
+
+
 def main():
 
     plot_errors() #Plots Newton and GMRes errors
@@ -214,5 +217,10 @@ def main():
     plot_balance(iN) 
     plot_orbit(iN) #Plot 8 frames of fields of orbit
 
+def main_floquet():
+    iN = 5
+    n = 50
+    plot_floq_exp(iN)
+
 if __name__ == '__main__':
-    main()
+    main_floquet()

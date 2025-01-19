@@ -7,6 +7,7 @@ and the 2/3 rule is used for dealiasing.
 
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 import params as pm
 
 import pySPEC as ps
@@ -20,19 +21,12 @@ grid   = ps.Grid2D_semi(pm)
 solver = SPECTER(pm)
 newt = DynSys(pm, solver)
 
-# Load initial conditions
-if pm.restart != 0:
-    # Restart Newton Solver from last iteration at index 0 (start of evolution)
-    restart_path = f'output/iN{pm.restart:02}/'
-    fields = solver.load_fields(restart_path, 0)
-    T, sx = newt.get_restart_values(pm.restart) # Get period and shift from last Newton iteration
-else:
-    # Start Newton Solver from initial guess
-    fields = solver.load_fields(pm.input, pm.stat)    
-    T, sx = pm.T, pm.sx # Set initial guess for period and shift
-    # Create directories
-    newt.mkdirs()
-    newt.write_header()
+# Load converged orbit
+
+iN = 5 # Newton iteration of converged orbit
+path = f'output/iN{iN:02}/'
+fields = solver.load_fields(path, idx = 0)
+T, sx = newt.get_restart_values(iN) # Get period and shift from converged Newton iteration
 
 U = newt.flatten(fields)
 if pm.sx is not None: # If searching for RPOs
@@ -40,5 +34,13 @@ if pm.sx is not None: # If searching for RPOs
 else:
     X = np.append(U, T) # If searching for UPOs with 0 shift
 
-# Iterate Newton Solver
-X = newt.run_newton(X)
+# Calculate n Floquet exponents
+n = 50
+eigval_H, eigvec_H, Q = newt.floq_exp(X, n, tol = 1e-10)
+
+# Save Floquet exponents
+spath = f'floq/iN{iN:02}/'
+os.makedirs(spath, exist_ok=True)
+np.save(f'{spath}floq_exp_{n}.npy', eigval_H)
+np.save(f'{spath}eigvec_H_{n}.npy', eigvec_H)
+np.save(f'{spath}Q_{n}.npy', Q)

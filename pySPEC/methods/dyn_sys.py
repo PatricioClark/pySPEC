@@ -18,7 +18,7 @@ class DynSys():
         ''' Load initial conditions '''
         if not self.pm.restart:
             # Start Newton Solver from initial guess
-            fields = self.solver.load_fields(self.pm.input, self.pm.start_idx)
+            fields = self.solver.load_fields(self.pm.input, self.pm.stat)
             
             T, sx = self.pm.T, self.pm.sx
             # Create directories
@@ -223,7 +223,7 @@ class DynSys():
                 b = self.form_b(U, UT)
                 F = self.norm(b) #||b|| = ||F||: rootsearch function
                 # Write to txts
-                self.write_prints(iN, F, U, sx, T)
+                self.write_prints(iN+1, F, U, sx, T)
                 break
 
     def hookstep(self, X, H, beta, Q, iN):

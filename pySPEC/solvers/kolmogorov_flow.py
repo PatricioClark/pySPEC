@@ -19,9 +19,10 @@ class KolmogorovFlow(PseudoSpectral):
     num_fields = 2
     dim_fields = 2
 
-    def __init__(self, pm, kf=4):
+    def __init__(self, pm, kf=4, ftypes=['uu', 'vv']):
         super().__init__(pm)
         self.grid = ps.Grid2D(pm)
+        self.ftypes = ftypes
 
         # Forcing
         self.kf = kf

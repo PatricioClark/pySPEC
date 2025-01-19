@@ -8,7 +8,6 @@ dt = 5e-4 # Time step
 ra = 1e6 # Rayleigh number
 bstep = 100 # Time step for saving text files
 ostep = 200 # Time step for saving output files
-stat = 0 # Time step of last file if restarting
 ext = 5 # Number of digits in file names
 nprocs = 28 # Number of processors dedicated to simulation
 
@@ -17,7 +16,7 @@ T = 12.0 # Initial guess of UPO period
 sx = 0. # Initial guess of UPO shift in x. If None then RPOs are not searched for  
 restart = 0 # Last completed Newton iteration if restarting
 input = "input/" # Path to input files
-start_idx = 2000 # Index of input files 
+stat = 2000 # Index of input files 
 
 N_newt = 200 # Maximum number of Newton iterations
 N_gmres = 300 # Maximum number of GMRES iterations
