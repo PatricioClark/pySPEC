@@ -4,7 +4,7 @@ import numpy as np
 
 class DynSys():
     def __init__(self, pm, solver):
-        ''' 
+        '''
         Parameters:
         ----------
             pm: parameters dictionary
@@ -19,7 +19,7 @@ class DynSys():
         if not self.pm.restart:
             # Start Newton Solver from initial guess
             fields = self.solver.load_fields(self.pm.input, self.pm.stat)
-            
+
             T, sx = self.pm.T, self.pm.sx
             # Create directories
             self.mkdirs()
@@ -27,9 +27,9 @@ class DynSys():
         else:
             # Restart Newton Solver from last iteration
             restart_path = f'output/iN{self.pm.restart:02}/'
-            fields = self.solver.load_fields(restart_path, 0) 
+            fields = self.solver.load_fields(restart_path, 0)
             T, sx = self.get_restart_values(self.pm.restart)
-        
+
         U = self.flatten(fields)
         if self.pm.sx is not None:
             X = np.append(U, [T, sx])
@@ -65,7 +65,7 @@ class DynSys():
             fields = self.unflatten(U)
             result = func(self, fields, *args, **kwargs)
             return self.flatten(result)
-        return wrapper         
+        return wrapper
 
     @flatten_dec
     def evolve(self, U, T, save = False, iN = 0):
@@ -142,7 +142,7 @@ class DynSys():
         dU_dt = (dU_dt - U)/self.pm.dt
 
         def apply_A(dX):
-            ''' Applies A (extended Jacobian) to vector X^t  '''        
+            ''' Applies A (extended Jacobian) to vector X^t  '''
             if self.pm.sx is not None:
                 dU, dT, ds = dX[:-2], dX[-2], dX[-1]
             else:
@@ -157,7 +157,7 @@ class DynSys():
             # Calculate derivative w.r.t. initial fields
             dUT_dU = self.evolve(U_pert, T)
             if self.pm.sx is not None:
-                dUT_dU = self.translate(dUT_dU,sx)    
+                dUT_dU = self.translate(dUT_dU,sx)
             dUT_dU = (dUT_dU - UT)/epsilon
 
             # Calculate projections of dU needed for extended Newton system
@@ -178,7 +178,7 @@ class DynSys():
 
         return apply_A, UT
 
-    def run_newton(self, X):            
+    def run_newton(self, X):
         '''Iterates Newton-GMRes solver until convergence'''
         for iN in range(self.pm.restart+1, self.pm.N_newt):
             # Unpack X
@@ -189,14 +189,14 @@ class DynSys():
 
             # Calculate A matrix for newton iteration
             apply_A, UT = self.update_A(X, iN)
-            
+
             # RHS of Newton extended system
             b = self.form_b(U, UT)
             F = self.norm(b) #||b|| = ||F||: rootsearch function
 
             # Write to txts
             self.write_prints(iN, F, U, sx, T)
-            
+
             # Perform GMRes iteration
             # Returns H, beta, Q such that X = Q@y, y = H^(-1)@beta
             H, beta, Q = GMRES(apply_A, b, self.pm.N_gmres, self.pm.tol_gmres, iN, self.pm.glob_method)
@@ -247,7 +247,7 @@ class DynSys():
             y, mu = trust_region(Delta, mu)
             dx = Q@y #Unitary transform back to full dimension
             if self.pm.sx is not None:
-                dU, dT, dsx = dx[:-2], dx[-2], dx[-1] 
+                dU, dT, dsx = dx[:-2], dx[-2], dx[-1]
             else:
                 dU, dT, dsx = dx[:-1], dx[-1], 0.
 
@@ -264,8 +264,8 @@ class DynSys():
             if self.pm.sx is not None:
                 UT = self.translate(UT,sx_new)
             F_new = self.norm(U_new-UT)
-            
-            lin_exp = self.norm(beta - self.pm.c * H @ y) #linear expansion of F around x (in basis Q). 
+
+            lin_exp = self.norm(beta - self.pm.c * H @ y) #linear expansion of F around x (in basis Q).
             # beta = H@y holds
 
             self.write_hookstep(iN, iH, F_new, lin_exp)
@@ -274,7 +274,7 @@ class DynSys():
                 break
             else:
                 Delta *= self.pm.reduc_reg #reduce trust region
-        return X_new, F_new, UT  
+        return X_new, F_new, UT
 
 
     def trust_region_function(self, H, beta, iN, y0):
@@ -286,18 +286,18 @@ class DynSys():
         def trust_region(Delta, mu):
             ''' Delta: trust region radius, mu: penalty parameter  '''
             if mu == 0: #First hoostep iteration. Doens't perform trust region
-                y_norm = self.norm(y0) 
+                y_norm = self.norm(y0)
                 Delta0 = y_norm #Initial trust region
 
                 with open(f'prints/hookstep/extra_iN{iN:02}.txt', 'a') as file:
-                    file.write(f'{Delta0},{mu},{y_norm},0\n') 
+                    file.write(f'{Delta0},{mu},{y_norm},0\n')
 
                 mu = self.pm.mu0 #Initialize first nonzero value of mu
                 return y0, mu
 
             for _ in range(1, 1000): #1000 big enough to ensure that condition is satisfied
 
-                # Ridge regression adjustment 
+                # Ridge regression adjustment
                 A = A_ + mu * np.eye(A_.shape[0])
                 y = np.linalg.solve(A, b) #updates solution with trust region
 
@@ -308,7 +308,7 @@ class DynSys():
                 else:
                     # Increase mu until trust region is satisfied
                     mu *= self.pm.mu_inc
-                    
+
             return y, mu
         return trust_region
 
@@ -377,22 +377,22 @@ class DynSys():
             UT = self.translate(UT, sx)
 
         def apply_J(dU):
-            ''' Applies J (jacobian of poincare map) matrix to vector dU  '''        
+            ''' Applies J (jacobian of poincare map) matrix to vector dU  '''
             # 1e-7 factor chosen to balance accuracy and numerical stability
             epsilon = 1e-7*self.norm(U)/self.norm(dU)
 
             # Perturb U by epsilon*dU
-            U_pert = U + epsilon*dU 
+            U_pert = U + epsilon*dU
 
             # Calculate derivative w.r.t. initial fields
             dUT_dU = self.evolve(U_pert, T)
             if self.pm.sx is not None:
-                dUT_dU = self.translate(dUT_dU,sx)    
+                dUT_dU = self.translate(dUT_dU,sx)
             dUT_dU = (dUT_dU - UT)/epsilon
             return dUT_dU
-        
+
         b = np.random.randn(len(U))
-        eigval_H, eigvec_H, Q = arnoldi_eig(apply_J, b, n, tol) 
+        eigval_H, eigvec_H, Q = arnoldi_eig(apply_J, b, n, tol)
 
         return eigval_H, eigvec_H, Q
 
@@ -400,26 +400,24 @@ class DynSys():
         ''' Calculates Lyapunov exponents of periodic orbit '''
         ''' fields: list of fields. T: time to evolve in each arnoldi iteration
           n: number of exponents, tol: tolerance of Arnoldi '''
-        
+
         U = self.flatten(fields)
         UT = self.evolve(U, T)
 
         def apply_J(dU):
-            ''' Applies J (jacobian of poincare map) matrix to vector dU  '''        
+            ''' Applies J (jacobian of poincare map) matrix to vector dU  '''
             # 1e-7 factor chosen to balance accuracy and numerical stability
             epsilon = 1e-7*self.norm(U)/self.norm(dU)
 
             # Perturb U by epsilon*dU
-            U_pert = U + epsilon*dU 
+            U_pert = U + epsilon*dU
 
             # Calculate derivative w.r.t. initial fields
             dUT_dU = self.evolve(U_pert, T)
-            if self.pm.sx is not None:
-                dUT_dU = self.translate(dUT_dU,sx)    
             dUT_dU = (dUT_dU - UT)/epsilon
             return dUT_dU
-        
+
         b = np.random.randn(len(U))
-        eigval_H, eigvec_H, Q = arnoldi_eig(apply_J, b, n, tol) 
+        eigval_H, eigvec_H, Q = arnoldi_eig(apply_J, b, n, tol)
 
         return eigval_H, eigvec_H, Q
