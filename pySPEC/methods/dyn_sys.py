@@ -372,7 +372,7 @@ class DynSys():
             U, T, sx = X[:-1], X[-1], 0.
 
         UT = self.evolve(U, T)
-        # Translate UT by sx and calculate derivatives
+        # Translate UT by sx
         if self.pm.sx is not None:
             UT = self.translate(UT, sx)
 
@@ -396,5 +396,30 @@ class DynSys():
 
         return eigval_H, eigvec_H, Q
 
-    def lyap_exp():
-        pass
+    def lyap_exp(self, fields, T, n, tol):
+        ''' Calculates Lyapunov exponents of periodic orbit '''
+        ''' fields: list of fields. T: time to evolve in each arnoldi iteration
+          n: number of exponents, tol: tolerance of Arnoldi '''
+        
+        U = self.flatten(fields)
+        UT = self.evolve(U, T)
+
+        def apply_J(dU):
+            ''' Applies J (jacobian of poincare map) matrix to vector dU  '''        
+            # 1e-7 factor chosen to balance accuracy and numerical stability
+            epsilon = 1e-7*self.norm(U)/self.norm(dU)
+
+            # Perturb U by epsilon*dU
+            U_pert = U + epsilon*dU 
+
+            # Calculate derivative w.r.t. initial fields
+            dUT_dU = self.evolve(U_pert, T)
+            if self.pm.sx is not None:
+                dUT_dU = self.translate(dUT_dU,sx)    
+            dUT_dU = (dUT_dU - UT)/epsilon
+            return dUT_dU
+        
+        b = np.random.randn(len(U))
+        eigval_H, eigvec_H, Q = arnoldi_eig(apply_J, b, n, tol) 
+
+        return eigval_H, eigvec_H, Q
