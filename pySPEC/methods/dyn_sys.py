@@ -213,7 +213,7 @@ class DynSys():
             # Select different initial condition from orbit if solution is not converging
             if (1-F_new/F) < self.pm.tol_nudge:
                 with open('prints/nudge.txt', 'a') as file:
-                    file.write(f'Nudging solution at iN = {iN}')
+                    file.write(f'iN = {iN}. frac_nudge = {self.pm.frac_nudge}\n')
                 U = self.evolve(U, T*self.pm.frac_nudge)
 
             # Termination condition
@@ -414,8 +414,6 @@ class DynSys():
 
             # Calculate derivative w.r.t. initial fields
             dUT_dU = self.evolve(U_pert, T)
-            if self.pm.sx is not None:
-                dUT_dU = self.translate(dUT_dU,sx)    
             dUT_dU = (dUT_dU - UT)/epsilon
             return dUT_dU
         
