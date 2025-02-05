@@ -1,6 +1,6 @@
 ! General configuration flags
 &status
-idir = "/ptmp/run"
+idir = "." 
 odir = "." 
 stat = 1    ! last binary file if restarting an old run
 mult = 1         ! decreases the time step

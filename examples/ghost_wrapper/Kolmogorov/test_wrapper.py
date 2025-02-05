@@ -28,32 +28,37 @@ uu = np.cos(2*np.pi*1.0*grid.yy/pm.Lx) + 0.1*np.sin(2*np.pi*2.0*grid.yy/pm.Lx)
 vv = np.cos(2*np.pi*1.0*grid.xx/pm.Lx) + 0.2*np.cos(3*np.pi*2.0*grid.yy/pm.Lx)
 
 fields = [uu, vv]
-
-# Plot initial fields
-for field, ftype in zip(fields, solver.ftypes):
-    plt.figure()
-    plt.imshow(field, cmap='viridis')
-    plt.colorbar()
-    plt.title(ftype)
-    plt.show()
-    plt.savefig(f'{ftype}_i.png')
+#Apply solenoidal projection
+ffields = [grid.forward(field) for field in fields]
+ffields = grid.inc_proj(ffields)
+fields_i = [grid.inverse(ff) for ff in ffields]
 
 T = 1.0
 # If you only need last fields
-fields = solver.evolve(fields, T)
+fields = solver.evolve(fields_i, T)
 
 # If you need intermediate fields
-# fields = solver.evolve(fields, T, bstep=pm.bstep, ostep=pm.ostep, sstep=pm.sstep, opath=pm.opath, bpath=pm.bpath,spath=pm.spath)
+# fields = solver.evolve(fields, T, pm.ipath, pm.opath, pm.bstep, pm.ostep, pm.sstep, pm.bpath, pm.spath)
 
-# Plot final fields
-for field, ftype in zip(fields, solver.ftypes):
-    plt.figure()
+# Plot initial and final fields
+for field_i, field, ftype in zip(fields_i, fields, solver.ftypes):
+    fig = plt.figure(figsize = (12, 6))
+
+    plt.subplot(1,3,1)
+    plt.imshow(field_i, cmap='viridis')
+    plt.colorbar()
+    plt.title(ftype)
+
+    plt.subplot(1,3,2)
     plt.imshow(field, cmap='viridis')
     plt.colorbar()
     plt.title(ftype)
-    plt.show()
-    plt.savefig(f'{ftype}_f.png')
 
+    plt.subplot(1,3,3)
+    plt.imshow(field_i-field, cmap='viridis')
+    plt.colorbar()
+    plt.title(ftype)
+    plt.savefig(f'{ftype}.png')
 
 # # Calculate n Lyapunov exponents
 # n = 50

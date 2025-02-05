@@ -2,9 +2,10 @@
 L = 1.0 # Domain length (in multiples of 2pi)
 T = 1.0 # Evolution time (dummy variable, changed throughout code)
 Nx = 512 # Number of grid points in x
-Ny = 256 # Number of grid points in y
+Ny = 512 # Number of grid points in y
 nu = 1./40. # Kinematic viscosity
 dt = 1e-3 # Time step
+precision = 'double' # Precision of the code
 bstep = 10 # Time step for saving text files
 ostep = 10 # Time step for saving output files
 sstep = 10 # Time step for saving spectra
