@@ -39,7 +39,11 @@ for field, ftype in zip(fields, solver.ftypes):
     plt.savefig(f'{ftype}_i.png')
 
 T = 1.0
+# If you only need last fields
 fields = solver.evolve(fields, T)
+
+# If you need intermediate fields
+# fields = solver.evolve(fields, T, bstep=pm.bstep, ostep=pm.ostep, sstep=pm.sstep, opath=pm.opath, bpath=pm.bpath,spath=pm.spath)
 
 # Plot final fields
 for field, ftype in zip(fields, solver.ftypes):

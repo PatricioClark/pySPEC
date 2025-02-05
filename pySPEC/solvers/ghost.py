@@ -42,28 +42,32 @@ class GHOST(Solver):
         fields = self.grid.inverse(fu), self.grid.inverse(fv)
         return fields
 
-    def evolve(self, fields, T, bstep=None, ostep=None, sstep=None, bpath='', opath=''):
+    def evolve(self, fields, T, bstep=None, ostep=None, sstep=None, bpath='', opath='', spath=''):
         '''Evolves fields in T time. Calls Fortran'''
         self.write_fields(fields)
 
         if ostep is None:
             self.ch_params(T) #change period to evolve
         else:
-            self.ch_params(T, bstep, ostep, sstep, opath) #save fields every ostep, and bal every bstep
+            self.ch_params(T, bstep=bstep, ostep=ostep, sstep=sstep, opath=opath) #save fields every ostep, and bal every bstep
 
         #run GHOST
         subprocess.run(f'mpirun -n {self.pm.nprocs} ./{self.solver}', shell = True)
 
         #save balance prints
         if bstep is not None:
-            txts = 'balance.txt helicity.txt scalar.txt noslip_diagnostic.txt scalar_constant_diagnostic.txt'
+            txts = 'balance.txt'
             subprocess.run(f'mv {txts} {bpath}/.', shell = True)
+        #save spectra prints
+        if sstep is not None:
+            txts = 'kspectrum* ktransfer*'
+            subprocess.run(f'mv {txts} {spath}/.', shell = True)
 
         #load evolved fields
         if ostep is None:
             fields = self.load_fields()
         else:
-            fields = self.load_fields(idx = int(T//ostep))
+            fields = self.load_fields(path=opath, idx = int(T/self.pm.dt //ostep))
         return fields
 
     def save_binary_file(self, path, data):
