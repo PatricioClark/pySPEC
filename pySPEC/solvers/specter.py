@@ -27,7 +27,7 @@ class SPECTER(Solver):
         if bstep is None:
             self.ch_params(T) #change period to evolve
         else:
-            self.ch_params(T, self.pm.bstep, self.pm.ostep, opath) #save fields every ostep, and bal every bstep
+            self.ch_params(T, bstep, ostep, opath) #save fields every ostep, and bal every bstep
 
         #run specter
         subprocess.run(f'mpirun -n {self.pm.nprocs} ./{self.solver}', shell = True)
