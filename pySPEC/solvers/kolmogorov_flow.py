@@ -1,6 +1,7 @@
 ''' 2D Kolmogorov flow solver '''
 
 import numpy as np
+import os
 
 from .pseudospectral import PseudoSpectral
 from .. import pseudo as ps
@@ -19,14 +20,15 @@ class KolmogorovFlow(PseudoSpectral):
     num_fields = 2
     dim_fields = 2
 
-    def __init__(self, pm, kf=4, ftypes=['uu', 'vv']):
+    def __init__(self, pm, kf=4, f0=1., ftypes=['uu', 'vv']):
         super().__init__(pm)
         self.grid = ps.Grid2D(pm)
         self.ftypes = ftypes
 
         # Forcing
         self.kf = kf
-        self.fx = np.sin(2*np.pi*kf*self.grid.yy/pm.Ly)
+        self.f0 = f0
+        self.fx = f0 *np.sin(2*np.pi*kf*self.grid.yy/pm.Ly)
         self.fx = self.grid.forward(self.fx)
         self.fy = np.zeros_like(self.fx, dtype=complex)
         self.fx, self.fy = self.grid.inc_proj([self.fx, self.fy])
@@ -77,8 +79,8 @@ class KolmogorovFlow(PseudoSpectral):
     def outs(self, fields, step, opath):
         uu = self.grid.inverse(fields[0])
         vv = self.grid.inverse(fields[1])
-        np.save(f'{opath}uu.{step:0{self.pm.ext}}', uu)
-        np.save(f'{opath}vv.{step:0{self.pm.ext}}', vv)
+        np.save(os.path.join(opath,f'uu.{step:0{self.pm.ext}}'), uu)
+        np.save(os.path.join(opath,f'vv.{step:0{self.pm.ext}}'), vv)
 
     def balance(self, fields, step, bpath):
         eng = self.grid.energy(fields)
@@ -87,12 +89,12 @@ class KolmogorovFlow(PseudoSpectral):
         inj = self.injection(fields, [self.fx, self.fy])
 
         bal = [f'{self.pm.dt*step:.4e}', f'{eng:.6e}', f'{dis:.6e}', f'{inj:.6e}']
-        with open(f'{bpath}balance.dat', 'a') as output:
+        with open(os.path.join(bpath, 'balance.dat'), 'a') as output:
             print(*bal, file=output)
 
     def load_fields(self, path, step):
-        uu = np.load(f'{path}uu.{step:0{self.pm.ext}}.npy')
-        vv = np.load(f'{path}vv.{step:0{self.pm.ext}}.npy')
+        uu = np.load(os.path.join(path, f'uu.{step:0{self.pm.ext}}.npy'))
+        vv = np.load(os.path.join(path, f'vv.{step:0{self.pm.ext}}.npy'))
         return [uu, vv]
 
     def oz(self, fields):
