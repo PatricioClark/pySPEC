@@ -80,24 +80,23 @@ class GHOST(Solver):
         ''' Writes fields to binary file. Saves temporal fields with idx=1'''
         if self.solver == 'HD':
             field = self.vel_to_ps(fields)
-            self.save_binary_file(f'{path}/ps.{stat:0{self.pm.ext}}.out', field)
+            self.save_binary_file(os.path.join(path,f'ps.{stat:0{self.pm.ext}}.out'), field)
         else:
             for field, ftype in zip(fields, self.ftypes):
-                self.save_binary_file(f'{path}/{ftype}.{idx:0{self.pm.ext}}.out', field)
+                self.save_binary_file(os.path.join(path,f'{ftype}.{stat:0{self.pm.ext}}.out'), field)
 
     def load_fields(self, path = '.', idx = 2): 
-        #TODO: manage change in idx
         '''Loads binary fields. idx = 2 for default read '''
         dtype = np.float64 if self.pm.precision == 'double' else np.float32
         if self.solver == 'HD':
             ftype = 'ps'
-            file = f'{path}/{ftype}.{idx:0{self.pm.ext}}.out'
+            file = os.path.join(path,f'{ftype}.{idx:0{self.pm.ext}}.out')
             ps = np.fromfile(file,dtype=dtype).reshape(self.grid.shape,order='F')
             fields = self.ps_to_vel(ps)
         else:
             fields = []
             for ftype in self.ftypes:
-                file = f'{path}/{ftype}.{idx:0{self.pm.ext}}.out'
+                file = os.path.join(path,f'{ftype}.{idx:0{self.pm.ext}}.out')
                 fields.append(np.fromfile(file,dtype=dtype).reshape(self.grid.shape,order='F'))
         return fields
 
@@ -110,11 +109,11 @@ class GHOST(Solver):
             ostep = int(T//self.pm.dt)
 
         for i, line in enumerate(lines):
-            if line.startswith('idir'): #modifies output directory
+            if line.startswith('idir'): #modifies input directory
                 lines[i] = f'idir = "{ipath}" \n'
             if line.startswith('odir'): #modifies output directory
                 lines[i] = f'odir = "{opath}" \n'
-            if line.startswith('stat'): #modifies dt (does not change throughout algorithm)
+            if line.startswith('stat'): #modifies starting index
                 lines[i] = f'stat = {stat}    ! last binary file if restarting an old run\n'
             if line.startswith('dt'): #modifies dt (does not change throughout algorithm)
                 lines[i] = f'dt = {self.pm.dt}   ! time step\n'

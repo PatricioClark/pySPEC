@@ -1,6 +1,7 @@
 ''' 2D Rayleigh-Benard solver '''
 
 import numpy as np
+import os
 import subprocess
 
 from .solver import Solver
@@ -50,18 +51,18 @@ class SPECTER(Solver):
         ''' Writes fields to binary file. Saves temporal fields in bin_tmp with idx=2'''
 
         for field, ftype in zip(fields, self.ftypes):
-            self.save_binary_file(f'{path}/{ftype}.{idx:0{self.pm.ext}}.out', field)
+            self.save_binary_file(os.path.join(path,f'{ftype}.{idx:0{self.pm.ext}}.out'), field)
 
         # Save additional empty fields required by solver
         empty_field = np.zeros(self.grid.shape, dtype=np.float64)
         for ftype in ('vy', 'pr'):
-            self.save_binary_file(f'{path}/{ftype}.{idx:0{self.pm.ext}}.out', empty_field)
+            self.save_binary_file(os.path.join(path,f'{ftype}.{idx:0{self.pm.ext}}.out'), empty_field)
 
     def load_fields(self, path = 'bin_tmp', idx = 1): 
         '''Loads binary fields. idx = 1 for default read in bin_temp '''
         fields = []
         for ftype in self.ftypes:
-            file = f'{path}/{ftype}.{idx:0{self.pm.ext}}.out'
+            file = os.path.join(path,f'{ftype}.{idx:0{self.pm.ext}}.out')
             fields.append(np.fromfile(file,dtype=np.float64).reshape(self.grid.shape,order='F'))
         return fields
 
