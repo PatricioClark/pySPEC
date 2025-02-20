@@ -37,8 +37,8 @@ class GHOST(Solver):
     def ps_to_vel(self, ps):
         '''Converts stream function to velocity fields'''
         fps = self.grid.forward(ps)
-        fu = -self.grid.deriv(fps, self.grid.ky)
-        fv = self.grid.deriv(fps, self.grid.kx)
+        fu = self.grid.deriv(fps, self.grid.ky)
+        fv = -self.grid.deriv(fps, self.grid.kx)
         fields = self.grid.inverse(fu), self.grid.inverse(fv)
         return fields
 
