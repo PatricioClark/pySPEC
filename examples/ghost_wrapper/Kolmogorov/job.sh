@@ -7,4 +7,4 @@
 #SBATCH --nodelist=c3
 
 ml python
-python3 test_wrapper.py
+python3 run_lyap.py

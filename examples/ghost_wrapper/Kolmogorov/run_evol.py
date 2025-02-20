@@ -11,6 +11,7 @@ from pySPEC.solvers import GHOST
 from pySPEC.methods import DynSys
 import params as pm
 
+
 pm.Lx = 2*np.pi*pm.L
 pm.Ly = 2*np.pi*pm.L
 
@@ -19,13 +20,18 @@ grid = ps.Grid2D(pm)
 solver = GHOST(pm)
 lyap = DynSys(pm, solver)
 
-# Load initial velocity field
 
+# If loading initial velocity field
 # path = 'input'
 # fields = solver.load_fields(path, 0)
 
+# If writing initial velocity field
 uu = np.cos(2*np.pi*1.0*grid.yy/pm.Lx) + 0.1*np.sin(2*np.pi*2.0*grid.yy/pm.Lx)
 vv = np.cos(2*np.pi*1.0*grid.xx/pm.Lx) + 0.2*np.cos(3*np.pi*2.0*grid.yy/pm.Lx)
+# Null initial velocity field
+# uu = np.zeros_like(grid.xx)
+# vv = np.zeros_like(grid.xx)
+
 
 fields = [uu, vv]
 #Apply solenoidal projection
@@ -33,40 +39,29 @@ ffields = [grid.forward(field) for field in fields]
 ffields = grid.inc_proj(ffields)
 fields_i = [grid.inverse(ff) for ff in ffields]
 
-T = 1.0
 # If you only need last fields
-fields = solver.evolve(fields_i, T)
+# fields = solver.evolve(fields_i, pm.T)
 
 # If you need intermediate fields
-# fields = solver.evolve(fields, T, pm.ipath, pm.opath, pm.bstep, pm.ostep, pm.sstep, pm.bpath, pm.spath)
+fields = solver.evolve(fields, pm.T, pm.ipath, pm.opath, pm.bstep, pm.ostep, pm.sstep, pm.bpath, pm.spath)
 
 # Plot initial and final fields
 for field_i, field, ftype in zip(fields_i, fields, solver.ftypes):
     fig = plt.figure(figsize = (12, 6))
 
     plt.subplot(1,3,1)
-    plt.imshow(field_i, cmap='viridis')
+    plt.imshow(field_i.T, origin='lower', cmap='viridis')
     plt.colorbar()
     plt.title(ftype)
 
     plt.subplot(1,3,2)
-    plt.imshow(field, cmap='viridis')
+    plt.imshow(field.T, origin='lower', cmap='viridis')
     plt.colorbar()
     plt.title(ftype)
 
     plt.subplot(1,3,3)
-    plt.imshow(field_i-field, cmap='viridis')
+    plt.imshow((field_i-field).T, origin='lower', cmap='viridis')
     plt.colorbar()
     plt.title(ftype)
-    plt.savefig(f'{ftype}.png')
-
-# # Calculate n Lyapunov exponents
-# n = 50
-# eigval_H, eigvec_H, Q = newt.lyap_exp(fields, T, n, tol = 1e-10)
-
-# # Save Lyapunov exponents
-# spath = f'lyap/'
-# os.makedirs(spath, exist_ok=True)
-# np.save(f'{spath}lyap_exp.npy', eigval_H)
-# np.save(f'{spath}eigvec_H.npy', eigvec_H)
-# np.save(f'{spath}Q.npy', Q)
+    plt.savefig(os.path.join(pm.opath,f'{ftype}.png'))
+    plt.show()

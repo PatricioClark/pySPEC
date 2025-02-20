@@ -5,7 +5,7 @@ odir = "."
 stat = 1    ! last binary file if restarting an old run
 mult = 1         ! decreases the time step
 bench = 0        ! benchmark mode if 1
-outs = 0         ! controls the amount of output
+outs = 1   ! controls the amount of output
 trans = 1        ! computes energy transfer if 1
 /
 
@@ -16,19 +16,19 @@ step = 1000      ! total number of steps
 tstep = 999 !steps between saving fields
 sstep = 0 !number of steps between spectrum output
 cstep = 0 !steps between writing global quantities
-rand = 1         ! random phases if 1
+rand = 0         ! random phases if 1
 cort = 7.5e-4    ! correlation time of the external forcing
 seed = 1000      ! seed for the random number generator
 /
 
 ! Parameters for the velocity field
 &velocity
-f0 = 0.37714265  ! amplitude of the mechanical forcing
+f0 = 1.0  ! amplitude of the mechanical forcing
 u0 = 1.00        ! amplitude of the initial velocity field
-kdn = 2.00       ! minimum wavenumber
-kup = 2.00       ! maximum wavenumber
+kdn = 4.00       ! minimum wavenumber
+kup = 4.00       ! maximum wavenumber
 nu = 0.025       ! kinematic viscosity
-fparam0 = 0.90   ! fparam0-9 can be used to control the forcing
+fparam0 = 0.25   ! fparam0-9 can be used to control the forcing
 vparam0 = 0.10   ! idem for the initial velocity field
 /
 
