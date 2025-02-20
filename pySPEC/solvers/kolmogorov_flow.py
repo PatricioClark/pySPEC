@@ -24,6 +24,7 @@ class KolmogorovFlow(PseudoSpectral):
         super().__init__(pm)
         self.grid = ps.Grid2D(pm)
         self.ftypes = ftypes
+        self.solver = 'KolmogorovFlow'
 
         # Forcing
         self.kf = kf

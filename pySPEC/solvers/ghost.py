@@ -31,25 +31,25 @@ class GHOST(Solver):
         fu, fv = [self.grid.forward(ff) for ff in fields]
         uy = self.grid.deriv(fu, self.grid.ky)
         vx = self.grid.deriv(fv, self.grid.kx)
-        foz = uy - vx
+        foz = vx - uy
         return self.grid.inverse(np.divide(foz, self.grid.k2, out = np.zeros_like(foz), where = self.grid.k2!=0.))
 
     def ps_to_vel(self, ps):
         '''Converts stream function to velocity fields'''
         fps = self.grid.forward(ps)
-        fu = -self.grid.deriv(fps, self.grid.ky)
-        fv = self.grid.deriv(fps, self.grid.kx)
+        fu = self.grid.deriv(fps, self.grid.ky)
+        fv = -self.grid.deriv(fps, self.grid.kx)
         fields = self.grid.inverse(fu), self.grid.inverse(fv)
         return fields
 
-    def evolve(self, fields, T, ipath='.', opath = '.', bstep=None, ostep=None, sstep=None, bpath='.', spath='.'):
+    def evolve(self, fields, T, ipath='.', opath = '.', bstep=None, ostep=None, sstep=None, bpath='.', spath='.', vort = False):
         '''Evolves fields in T time. Calls Fortran'''
         self.write_fields(fields, path = ipath)
 
         if ostep is None:
             self.ch_params(T, ipath, opath) #change period to evolve
         else:
-            self.ch_params(T, ipath, opath, bstep=bstep, ostep=ostep, sstep=sstep) #save fields every ostep, and bal every bstep
+            self.ch_params(T, ipath, opath, bstep=bstep, ostep=ostep, sstep=sstep, vort = vort) #save fields every ostep, and bal every bstep
 
         #run GHOST
         subprocess.run(f'mpirun -n {self.pm.nprocs} ./{self.solver}', shell = True)
@@ -100,7 +100,7 @@ class GHOST(Solver):
                 fields.append(np.fromfile(file,dtype=dtype).reshape(self.grid.shape,order='F'))
         return fields
 
-    def ch_params(self, T, ipath, opath, stat = 1, bstep = 0, ostep=0, sstep = 0):
+    def ch_params(self, T, ipath, opath, stat = 1, bstep = 0, ostep=0, sstep = 0, vort = False):
         '''Changes parameter.txt to update T, and sx '''
         with open('parameter.txt', 'r') as file:
             lines = file.readlines()
@@ -127,6 +127,11 @@ class GHOST(Solver):
                 lines[i] = f'tstep = {ostep} !steps between saving fields\n'
             if line.startswith('nu'): #modifies ra (does not change throughout algorithm)
                 lines[i] = f'nu = {self.pm.nu}       ! kinematic viscosity\n'
+            if line.startswith('outs'):
+                if vort: # to save additional vorticity fields
+                    lines[i] = 'outs = 0   ! controls the amount of output\n'
+                else: 
+                    lines[i] = 'outs = 1   ! controls the amount of output\n'
 
         #write
         with open('parameter.txt', 'w') as file:
