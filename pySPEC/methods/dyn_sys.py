@@ -220,6 +220,8 @@ class DynSys():
             if F_new < self.pm.tol_newt:
                 self.mkdirs_iN(iN)
                 UT = self.evolve(U, T, save = True, iN = iN)
+                if self.pm.sx is not None:
+                    UT = self.translate(UT, sx)
                 b = self.form_b(U, UT)
                 F = self.norm(b) #||b|| = ||F||: rootsearch function
                 # Write to txts
