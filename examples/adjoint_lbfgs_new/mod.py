@@ -66,7 +66,31 @@ def reset(fpm, bpm, fsolver, bsolver):
         dg = bsolver.dgs[bpm.iit0-1]
     return hb, dg
 
+def early_stopping(w, loss, patience=3):
+    """
+    Simple early stopping function.
 
+    Args:
+        w (int): Current patience counter.
+        loss (list): List of loss values.
+        patience (int): Number of steps to wait before stopping.
+
+    Returns:
+        (int, bool): Updated patience counter and stopping signal.
+    """
+
+    # Check if the loss improved
+    if loss[-1] <= loss[-2]:
+        w = 0  # Reset patience
+    else:
+        w += 1
+
+    # Stop if patience runs out
+    if w >= patience:
+        print(f"Stopping early after {w} iterations without improvement.")
+        return w, True  # Signal to stop
+
+    return w, False  # Keep going
 
 
 def plot_fields(fpm,

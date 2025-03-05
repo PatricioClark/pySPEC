@@ -63,7 +63,7 @@ check_dir(bpm.hb_path)
 # restart from iit0
 hb, dg = reset(fpm, bpm, fsolver, bsolver)
 
-# update hb and dg in forward solver
+# update hb and dg in forward and backward solver
 fsolver.update_hb(hb)
 bsolver.update_hb(hb)
 bsolver.update_dg(dg)
@@ -119,7 +119,7 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
     uu_ = np.zeros_like(grid.xx)
     hh_ = np.zeros_like(grid.xx)
     fields = [uu_, hh_]
-    # update backward solver at each step
+    # update forcing terms for backward solver
     bsolver.get_sparse_forcing()
 
 
@@ -131,27 +131,37 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
     print(f'\niit {iit} : calculate dg/dhb')
     Nt = round(fpm.T/fpm.dt)
     dg = np.trapz( bsolver.hx_uu, dx = 1e-4, axis = 0)
-    # dg = np.trapz( np.load(f'{bpm.out_path}/hx_uu_memmap.npy'), dx = 1e-4, axis = 0)
-    # update hb values with momentum GD
+
+    # update hb values
     print(f'\niit {iit} : update hb')
-    # Run optimization
     if pm.optimizer == 'lbfgs':
         DG, state = opt.update(dg, state, hb)
         hb = hb - lr * DG
     elif pm.optimizer == 'sgd':
         hb, opt_state = update(hb, dg, opt_state)
 
-    # update hb
+    # update hb in forward solver
     fsolver.update_hb(hb)
 
+    # update hb and dg in backward solver
     bsolver.update_hb(hb)
     bsolver.update_hbs(iit)
     bsolver.update_dg(dg)
     bsolver.update_dgs(iit)
-    # save for the following iteration
+
+    # update loss
     print(f'\niit {iit} : save hb')
     bsolver.update_loss(iit-1)
     bsolver.update_val(iit-1)
+
+    if iit == 1:
+        w, stop = [0,0]
+    else:
+        w, stop = early_stopping(w, bsolver.val, patience=3)
+
+    if stop:
+        print(f"Early stopping triggered at step {step}")
+        break
 
     if iit%pm.ckpt==0:
         # Plot fields
