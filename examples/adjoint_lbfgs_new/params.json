@@ -1,7 +1,7 @@
 {
     "Lx": 1.0,
     "Nx": 1024,
-    "T": 5,
+    "T": 0.5,
     "dt": 1e-4,
     "inverse_u":1,
     "noise":1,
@@ -11,7 +11,7 @@
     "sx": 1,
     "optimizer": "lbfgs",
     "make_data": 0,
-    "iit0": 7,
+    "iit0": 0,
     "iitN": 100,
     "iit":0,
     "ckpt":1,

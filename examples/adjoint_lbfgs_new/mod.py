@@ -66,7 +66,7 @@ def reset(fpm, bpm, fsolver, bsolver):
         dg = bsolver.dgs[bpm.iit0-1]
     return hb, dg
 
-def early_stopping(w, loss, patience=3):
+def early_stopping(w, loss, iit, patience=3):
     """
     Simple early stopping function.
 
@@ -80,7 +80,8 @@ def early_stopping(w, loss, patience=3):
     """
 
     # Check if the loss improved
-    if loss[-1] <= loss[-2]:
+    print('loss compare: ' , loss[iit-1] , loss[iit-2])
+    if loss[iit-1] <= loss[iit-2]:
         w = 0  # Reset patience
     else:
         w += 1

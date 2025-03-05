@@ -154,13 +154,13 @@ for iit in range(fpm.iit0 + 1, fpm.iitN):
     bsolver.update_loss(iit-1)
     bsolver.update_val(iit-1)
 
-    if iit == 1:
+    if iit <=2:
         w, stop = [0,0]
     else:
-        w, stop = early_stopping(w, bsolver.val, patience=3)
+        w, stop = early_stopping(w, bsolver.val, iit, patience=3)
 
     if stop:
-        print(f"Early stopping triggered at step {step}")
+        print(f"Early stopping triggered at step {iit}")
         break
 
     if iit%pm.ckpt==0:
