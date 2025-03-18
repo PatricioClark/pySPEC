@@ -91,9 +91,9 @@ class SPECTER(Solver):
 
             nu, kappa = self.get_nu_kappa()
             if line.startswith('nu'): #modifies ra (does not change throughout algorithm)
-                lines[i] = f'nu = {nu:.3e}         ! kinematic viscosity\n'
+                lines[i] = f'nu = {nu:.9e}         ! kinematic viscosity\n'
             if line.startswith('kappa'): #modifies ra (does not change throughout algorithm)
-                lines[i] = f'kappa = {kappa:.4e}      ! scalar difussivity\n'
+                lines[i] = f'kappa = {kappa:.9e}      ! scalar difussivity\n'
 
         #write
         with open('parameter.inp', 'w') as file:

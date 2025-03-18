@@ -140,8 +140,6 @@ def arnoldi_eig(A, b, n, tol):
     Obtains approximate eigenvalues from A using Arnoldi iteration
     """
 
-    b_norm = np.linalg.norm(b)
-
     # Determine the data type based on b
     dtype = np.complex_ if np.iscomplexobj(b) else np.float_
 
