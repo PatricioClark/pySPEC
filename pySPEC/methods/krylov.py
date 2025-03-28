@@ -28,7 +28,7 @@ def GMRES(A, b, N_gmres, tol_gmres, iN = None, glob_method = 1):
     n = N_gmres
 
     # Determine the data type based on b
-    dtype = np.complex_ if np.iscomplexobj(b) else np.float_
+    dtype = np.complex_ if np.iscomplexobj(b) else np.float64
 
     #Initialize sine and cosine Givens 1d vectors. This allows the algorithm to be O(k) instead of O(k^2)
     sn = np.zeros(n,dtype=dtype)
@@ -89,7 +89,7 @@ def arnoldi_step(A, Q, k):
         v = A @ Q[:, k-1]  # generate candidate vector using matrix multiplication
 
     # Determine the data type based on Q and v
-    dtype = np.complex_ if (np.iscomplexobj(Q) or np.iscomplexobj(v)) else np.float_
+    dtype = np.complex_ if (np.iscomplexobj(Q) or np.iscomplexobj(v)) else np.float64
 
     h = np.zeros(k+1, dtype=dtype)
 
@@ -123,7 +123,7 @@ def backsub(R, b):
     n = len(b)
 
     # Determine the data type based on b
-    dtype = np.complex_ if np.iscomplexobj(b) else np.float_
+    dtype = np.complex_ if np.iscomplexobj(b) else np.float64
 
     x = np.zeros(n,dtype=dtype)
     
@@ -141,7 +141,7 @@ def arnoldi_eig(A, b, n, tol):
     """
 
     # Determine the data type based on b
-    dtype = np.complex_ if np.iscomplexobj(b) else np.float_
+    dtype = np.complex_ if np.iscomplexobj(b) else np.float64
 
     #Unitary base of Krylov subspace (maximum number of cols: n)
     Q = np.zeros((len(b), n), dtype=dtype)
