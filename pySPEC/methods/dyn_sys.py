@@ -403,7 +403,8 @@ class DynSys():
         ''' X: (U,T,sx) of converged periodic orbit, n: number of exponents, tol: tolerance of Arnoldi '''
 
         from warnings import warn
-        warn('This function is deprecated. Use lyap_exp instead.', DeprecationWarning)
+        warn('This function is deprecated. Use floquet_exponents instead.',
+             DeprecationWarning)
 
         # Unpack X
         U, T, sx = self.unpack_X(X)
@@ -440,7 +441,15 @@ class DynSys():
         return eigval_H, eigvec_H, Q
 
     def lyap_exp(self, fields, T, n, tol, ep0=1e-7, sx=None, b='U'):
-        ''' Calculates Lyapunov exponents of periodic orbit 
+        from warnings import warn
+        warn('This function is deprecated. Use floquet_exponents instead.',
+             DeprecationWarning)
+        return self.floquet_exponents(fields, T, n, tol, ep0, sx, b)
+
+    def floquet_exponents(self, fields, T, n, tol, ep0=1e-7, sx=None, b='U'):
+        ''' Calculates Floquet exponents
+
+        To get the Lyapunov exponents do log(eigval_H)/T
         
         Paramters
         ---------
