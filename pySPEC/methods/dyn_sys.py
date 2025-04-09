@@ -482,6 +482,11 @@ class DynSys():
     def floq_exp(self, X, n, tol, b = 'U'):
         ''' Calculates Floquet exponents of periodic orbit '''
         ''' X: (U,T,sx) of converged periodic orbit, n: number of exponents, tol: tolerance of Arnoldi '''
+
+        from warnings import warn
+        warn('This function is deprecated. Use floquet_exponents instead.',
+             DeprecationWarning)
+
         # Unpack X
         U, T, sx = self.unpack_X(X)
 
@@ -516,28 +521,69 @@ class DynSys():
 
         return eigval_H, eigvec_H, Q
 
-    def lyap_exp(self, fields, T, n, tol):
-        ''' Calculates Lyapunov exponents of periodic orbit '''
-        ''' fields: list of fields. T: time to evolve in each arnoldi iteration
-          n: number of exponents, tol: tolerance of Arnoldi '''
+    def lyap_exp(self, fields, T, n, tol, ep0=1e-7, sx=None, b='U'):
+        from warnings import warn
+        warn('This function is deprecated. Use floquet_exponents instead.',
+             DeprecationWarning)
+        return self.floquet_exponents(fields, T, n, tol, ep0, sx, b)
+
+    def floquet_exponents(self, fields, T, n, tol, ep0=1e-7, sx=None, b='U'):
+        ''' Calculates Floquet exponents
+
+        To get the Lyapunov exponents do log(eigval_H)/T
+        
+        Paramters
+        ---------
+        fields: list of fields.
+        T: time to evolve in each arnoldi iteration
+        n: number of exponents,
+        tol: tolerance of Arnoldi
+        ep0: perturbation factor, optional, default=1e-7
+        sx: translation in x direction, optional, default=None
+        b: initial guess for Arnoldi, optional, default='U'. Could also take in 'random'
+        or a np.array of the same size as U
+
+        Returns
+        -------
+        eigval_H: Lyapunov exponents
+        eigvec_H: Lyapunov vectors
+        Q: Arnoldi basis
+        '''
 
         U = self.flatten(fields)
         UT = self.evolve(U, T)
 
+        # Translate UT by sx
+        if sx is not None:
+            UT = self.translate(UT, sx)
+
         def apply_J(dU):
             ''' Applies J (jacobian of poincare map) matrix to vector dU  '''
             # 1e-7 factor chosen to balance accuracy and numerical stability
-            epsilon = 1e-7*self.norm(U)/self.norm(dU)
+            epsilon = ep0*self.norm(U)/self.norm(dU)
 
             # Perturb U by epsilon*dU
             U_pert = U + epsilon*dU
 
             # Calculate derivative w.r.t. initial fields
             dUT_dU = self.evolve(U_pert, T)
+
+            if sx is not None:
+                dUT_dU = self.translate(dUT_dU, sx)
+
             dUT_dU = (dUT_dU - UT)/epsilon
             return dUT_dU
 
-        b = np.random.randn(len(U))
+        if isinstance(b, str):
+            if b == 'U':
+                b = U
+            elif b == 'random':
+                b = np.random.randn(len(U))
+        elif isinstance(b, np.ndarray):
+            pass
+        else:
+            raise ValueError('b must be one of the given options')
+
         eigval_H, eigvec_H, Q = arnoldi_eig(apply_J, b, n, tol)
 
         return eigval_H, eigvec_H, Q
