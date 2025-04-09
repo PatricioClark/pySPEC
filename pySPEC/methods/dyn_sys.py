@@ -48,7 +48,8 @@ class DynSys():
     def unpack_X(self, X, arclength = False):
         '''X could contain extra params sx and lda if searching for RPOs (pm.sx != 0) or using arclength continuation'''
         dim_U = self.grid.N * self.solver.num_fields
-        if self.pm.remove_boundary:
+        remove_boundary = getattr(self.pm, 'remove_boundary', False)
+        if remove_boundary:
             dim_U = self.pm.Nx * (self.pm.Nz-2) * self.solver.num_fields
         U = X[:dim_U]
         if self.pm.T is not None:
@@ -83,7 +84,8 @@ class DynSys():
 
     def flatten(self, fields):
         '''Flattens fields'''
-        if not self.pm.remove_boundary:
+        remove_boundary = getattr(self.pm, 'remove_boundary', False)
+        if not remove_boundary:
             return np.concatenate([f.flatten() for f in fields])
         else:
             return np.concatenate([f[:,1:-1].flatten() for f in fields])
@@ -92,7 +94,8 @@ class DynSys():
         '''Unflatten fields'''
         ll = len(U)//self.solver.num_fields
         fields = [U[i*ll:(i+1)*ll] for i in range(self.solver.num_fields)]
-        if not self.pm.remove_boundary:
+        remove_boundary = getattr(self.pm, 'remove_boundary', False)
+        if not remove_boundary:
             fields = [f.reshape(self.grid.shape) for f in fields]
             return fields
         else:
@@ -261,7 +264,8 @@ class DynSys():
                 U = self.evolve(U, T*self.pm.frac_nudge)
 
             # Termination condition
-            if F_new < self.pm.tol_newt:
+            if (F_new < self.pm.tol_newt) and ((F-F_new)/F < self.pm.tol_improve):
+
                 self.mkdirs_iN(iN)
                 UT = self.evolve(U, T, save = True, iN = iN)
                 if self.pm.sx is not None:

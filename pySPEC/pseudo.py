@@ -4,7 +4,7 @@ import numpy as np
 class Grid1D:
     def __init__(self, pm):
         xx, dx = np.linspace(0, pm.Lx, pm.Nx, endpoint=False, retstep=True)
-        tt     = np.arange(0, pm.T, pm.dt)
+        tt   = np.arange(0, getattr(pm, 'T', 1), pm.dt)
 
         ki = np.fft.rfftfreq(pm.Nx, 1/pm.Nx).astype(int)
         kx = 2.0*np.pi*np.fft.rfftfreq(pm.Nx, dx) 
