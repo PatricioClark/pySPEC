@@ -93,9 +93,11 @@ class KolmogorovFlow(PseudoSpectral):
         with open(os.path.join(bpath, 'balance.dat'), 'a') as output:
             print(*bal, file=output)
 
-    def load_fields(self, path, step):
-        uu = np.load(os.path.join(path, f'uu.{step:0{self.pm.ext}}.npy'))
-        vv = np.load(os.path.join(path, f'vv.{step:0{self.pm.ext}}.npy'))
+    def load_fields(self, path, step, ext = None):
+        if not ext:
+            ext = self.pm.ext
+        uu = np.load(os.path.join(path, f'uu.{step:0{ext}}.npy'))
+        vv = np.load(os.path.join(path, f'vv.{step:0{ext}}.npy'))
         return [uu, vv]
 
     def oz(self, fields):

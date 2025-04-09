@@ -129,9 +129,9 @@ class GHOST(Solver):
                 lines[i] = f'nu = {self.pm.nu}       ! kinematic viscosity\n'
             if line.startswith('outs'):
                 if vort: # to save additional vorticity fields
-                    lines[i] = 'outs = 0   ! controls the amount of output\n'
-                else: 
                     lines[i] = 'outs = 1   ! controls the amount of output\n'
+                else: 
+                    lines[i] = 'outs = 0   ! controls the amount of output\n'
 
         #write
         with open('parameter.txt', 'w') as file:
