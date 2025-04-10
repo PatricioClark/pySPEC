@@ -27,7 +27,15 @@ if pm.restart_iN != 0:
     T, sx = newt.get_restart_values(pm.restart_iN) # Get period and shift from last Newton iteration
 else:
     # Start Newton Solver from initial guess
-    fields = solver.load_fields(pm.input, pm.stat)    
+    if pm.input_type == 'ps':
+        fields = solver.load_fields(pm.input, pm.stat)
+    elif pm.input_type == 'v':
+        uu = np.load(os.path.join(pm.input, f'uu.{pm.stat:0{pm.ext}}.npy'))
+        vv = np.load(os.path.join(pm.input, f'vv.{pm.stat:0{pm.ext}}.npy'))
+        fields = [uu, vv]
+    else:
+        raise ValueError("Invalid input type. Use 'v' for velocity or 'ps' for streamfunction.")
+
     T, sx = pm.T, pm.sx # Set initial guess for period and shift
     # Create directories
     newt.mkdirs()

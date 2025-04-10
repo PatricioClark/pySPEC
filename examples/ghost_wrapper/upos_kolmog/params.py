@@ -13,10 +13,11 @@ ostep = 200 # Time step for saving output files
 nprocs = 15 # Number of processors dedicated to simulation
 
 # Newton-Krylov parameters 
-T = 1.0 # Initial guess for period. If None then equilibrium is searched for
+T = 7.4 # Initial guess for period. If None then equilibrium is searched for
 sx = 0. # Initial guess for shift in x. If None then Travelling Waves are not searched for  
 restart_iN = 0 # Last completed Newton iteration if restarting
 input = "input/" # Path to input files
+input_type = 'v' # Type of input files: 'v' for velocity, 'ps' for streamfunction 
 stat = 0 # Index of input files 
 
 remove_boundary = False  # Removes fixed non-periodic boundaries from fields for Newton Krylov calculations
