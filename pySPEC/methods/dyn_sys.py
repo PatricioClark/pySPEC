@@ -118,7 +118,7 @@ class DynSys():
         if save:
             suffix = f'{iA:02}' if iA is not None else ''
             dir_iN = f'iN{iN:02}/'
-            return self.solver.evolve(U, T, self.pm.bstep, self.pm.ostep,\
+            return self.solver.evolve(U, T, bstep = self.pm.bstep, ostep = self.pm.ostep,\
                 bpath = f'balance{suffix}/{dir_iN}', opath = f'output{suffix}/{dir_iN}')
         else:
             return self.solver.evolve(U, T)
@@ -258,7 +258,7 @@ class DynSys():
             U, T, sx = self.unpack_X(X)
 
             # Select different initial condition from orbit if solution is not converging
-            if (1-F_new/F) < self.pm.tol_nudge:
+            if ((F-F_new)/F) < self.pm.tol_nudge:
                 with open('prints/nudge.txt', 'a') as file:
                     file.write(f'iN = {iN}. frac_nudge = {self.pm.frac_nudge}\n')
                 U = self.evolve(U, T*self.pm.frac_nudge)
