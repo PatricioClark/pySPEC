@@ -37,9 +37,9 @@ class DynSys():
     def form_X(self, U, T=None, sx=None, lda = None):
         ''' Form X vector from fields U, T, sx and lda (if applicable) '''
         X = np.copy(U)
-        if T is not None:
+        if getattr(self.pm, 'T', None) is not None:
             X = np.append(X, T)
-        if sx is not None:
+        if getattr(self.pm, 'sx', None) is not None:
             X = np.append(X, sx)
         if lda is not None:
             X = np.append(X, lda)
@@ -48,16 +48,20 @@ class DynSys():
     def unpack_X(self, X, arclength = False):
         '''X could contain extra params sx and lda if searching for RPOs (pm.sx != 0) or using arclength continuation'''
         dim_U = self.grid.N * self.solver.num_fields
+        
+        # Remove boundaries if needed
         remove_boundary = getattr(self.pm, 'remove_boundary', False)
         if remove_boundary:
             dim_U = self.pm.Nx * (self.pm.Nz-2) * self.solver.num_fields
+
         U = X[:dim_U]
-        if self.pm.T is not None:
+
+        if getattr(self.pm,'T',None) is not None:
             T = X[dim_U] # T saved as first argument after U
         else:
             T = 1. # if searching for TW or equilibrium T must be fixed at a small but not too small value 
 
-        if self.pm.sx is not None:
+        if getattr(self.pm,'sx',None) is not None:
             sx = X[dim_U+1] if self.pm.T else X[dim_U]
         else:
             sx = 0.
@@ -317,7 +321,7 @@ class DynSys():
             if self.pm.T:
                 T_new = T+dT.real
             else:
-                T_new = self.pm.dt
+                T_new = 1.
 
             X_new = self.form_X(U_new, T_new, sx_new)
 
@@ -685,7 +689,8 @@ class DynSys():
     def N_constraint(self, X, dX_dr, dr, X1):
         '''Calculates N function resulting from the arclength constraint as in 
         'Chandler - Kerswell: Invariant recurrent solutions..' '''
-        return np.dot(dX_dr, (X-X1)) - dr
+        alpha = getattr(self.pm, 'alpha', 1.) # parametrization velocity. default = 1.
+        return np.dot(dX_dr, (X-X1)) - dr * alpha**2
 
     def update_A_arc(self, X, dX_dr, iN, iA: int|None):
         '''Creates (extended) Jacobian matrix to be applied to U throughout GMRes'''
