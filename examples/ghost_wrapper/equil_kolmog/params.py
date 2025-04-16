@@ -1,9 +1,10 @@
-# GHOST parameters (set as compiled solver) 
+# GHOST parameters (to be set as compiled solver) 
 L = 1.0 # Domain length in x (multiples of 2pi)
 Nx = 256 # Number of grid points in x
 Ny = 256 # Number of grid points in y
 precision = 'double' # Precision of the code
 ext = 5 # Number of digits in file names
+rkord = 2 # Order of Runge-Kutta method
 
 # GHOST adjustable parameters
 nu = 1./40. # Kinematic viscosity
@@ -16,6 +17,7 @@ nprocs = 15 # Number of processors dedicated to simulation
 sx = 0. # Initial guess of shift in x. If None then Traveling Waves are not searched for  
 restart_iN = 0 # Last completed Newton iteration if restarting
 input = "input/" # Path to input files
+input_type = 'v' # Type of input files: 'v' for velocity, 'ps' for streamfunction 
 stat = 0 # Index of input files 
 
 remove_boundary = False  # Removes fixed non-periodic boundaries from fields for Newton Krylov calculations
