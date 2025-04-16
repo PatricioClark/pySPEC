@@ -28,7 +28,7 @@ class Solver(abc.ABC):
         '''
         self.pm = pm
         self.pm.dim = self.dim_fields
-        self.grid: ps.Grid1D | ps.Grid2D
+        self.grid: ps.Grid1D | ps.Grid2D | ps.Grid2D_semi | ps.Grid3D
 
     @abc.abstractmethod
     def evolve(self, fields, T, bstep=None, ostep=None, sstep=None, bpath = '', opath = '', spath = ''):

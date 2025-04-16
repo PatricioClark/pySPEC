@@ -66,11 +66,16 @@ class SPECTER(Solver):
             fields.append(np.fromfile(file,dtype=np.float64).reshape(self.grid.shape,order='F'))
         return fields
 
-    def get_nu_kappa(self, gamma = 1):
-        '''Calculates nu and kappa from ra. Assumes gamma = 1, h = 3.14159'''
-        '''If different gammas are used, formula should be changed (nu neq kappa)'''
-        nu = np.sqrt(gamma**2 * self.pm.Lz**4 / self.pm.ra)
-        return nu, nu
+    def get_nu_kappa(self):
+        '''Calculates nu and kappa from ra'''
+        ra = self.pm.ra
+        pr = getattr(self.pm, 'pr', 1.) # in case pr and gamma are not defined in params
+        gamma = getattr(self.pm, 'gamma', 1.)    
+        Lz = self.pm.Lz
+
+        nu = gamma*Lz**2 * np.sqrt(pr/ra)
+        kappa = gamma*Lz**2 / np.sqrt(pr*ra)
+        return nu, kappa
 
     def ch_params(self, T, bstep = 0, ostep=0, opath = ''):
         '''Changes parameter.inp to update T, and sx '''

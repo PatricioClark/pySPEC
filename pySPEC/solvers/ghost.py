@@ -9,21 +9,26 @@ from .. import pseudo as ps
 
 class GHOST(Solver):
     '''
-    GHOST 2D flows solver
+    GHOST 2D/3D flows solver
     '''
 
-    num_fields = 2
-    dim_fields = 2
-
-    def __init__(self, pm, solver = 'HD'):
-        super().__init__(pm)
-        self.grid = ps.Grid2D(pm)
+    def __init__(self, pm, solver = 'HD', dimension = 2):
         self.solver = solver
+        self.dimension = dimension
 
-        if self.solver == 'HD':
+        if self.dimension == 2:
             self.ftypes = ['uu', 'vv']
+            self.grid = ps.Grid2D(pm)
+            self.num_fields = 2
+            self.dim_fields = 2
+        elif self.dimension == 3:
+            self.ftypes = ['vx', 'vy', 'vz']
+            self.grid = ps.Grid3D(pm)
+            self.num_fields = 3
+            self.dim_fields = 3
         else:
-            raise ValueError('Invalid solver')
+            raise ValueError('Invalid dimension')
+        super().__init__(pm)
 
     def vel_to_ps(self, fields):
         '''Converts velocity fields to stream function'''
@@ -77,7 +82,7 @@ class GHOST(Solver):
 
     def write_fields(self, fields, path, stat=1):
         ''' Writes fields to binary file. Saves temporal fields with idx=1'''
-        if self.solver == 'HD':
+        if self.dimension == 2:
             field = self.vel_to_ps(fields)
             self.save_binary_file(os.path.join(path,f'ps.{stat:0{self.pm.ext}}.out'), field)
         else:
@@ -87,7 +92,7 @@ class GHOST(Solver):
     def load_fields(self, path = '.', idx = 2): 
         '''Loads binary fields. idx = 2 for default read '''
         dtype = np.float64 if self.pm.precision == 'double' else np.float32
-        if self.solver == 'HD':
+        if self.dimension == 2:
             ftype = 'ps'
             file = os.path.join(path,f'{ftype}.{idx:0{self.pm.ext}}.out')
             ps = np.fromfile(file,dtype=dtype).reshape(self.grid.shape,order='F')
@@ -105,7 +110,7 @@ class GHOST(Solver):
             lines = file.readlines()
 
         if ostep == 0:
-            ostep = int(T//self.pm.dt)
+            ostep = int(T/self.pm.dt)
 
         for i, line in enumerate(lines):
             if line.startswith('idir'): #modifies input directory
@@ -117,7 +122,7 @@ class GHOST(Solver):
             if line.startswith('dt'): #modifies dt (does not change throughout algorithm)
                 lines[i] = f'dt = {self.pm.dt}   ! time step\n'
             if line.startswith('step'):#modify period:
-                lines[i] = f'step = {int(T//self.pm.dt)+1}      ! total number of steps\n'
+                lines[i] = f'step = {int(T/self.pm.dt)+1}      ! total number of steps\n'
             if line.startswith('cstep'): #modify cstep (bstep in current code)
                 lines[i] = f'cstep = {bstep} !steps between writing global quantities\n'
             if line.startswith('sstep'): #modify cstep (bstep in current code)
