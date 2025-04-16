@@ -105,8 +105,12 @@ class GHOST(Solver):
         return fields
 
     def ch_params(self, T, ipath, opath, bstep = 0, ostep=0, sstep = 0, vort = False, stat = 1):
-        '''Changes parameter.txt to update T, and sx '''
-        with open('parameter.txt', 'r') as file:
+        '''Changes parameter to update params throughout algorithm '''
+        if self.dimension == 2:
+            suffix = 'txt'
+        elif self.dimension == 3:
+            suffix = 'inp'
+        with open(f'parameter.{suffix}', 'r') as file:
             lines = file.readlines()
 
         if ostep == 0:
@@ -129,8 +133,6 @@ class GHOST(Solver):
                 lines[i] = f'sstep = {sstep} !number of steps between spectrum output\n'
             if line.startswith('tstep'): #modify tstep (ostep in current code)
                 lines[i] = f'tstep = {ostep} !steps between saving fields\n'
-            if line.startswith('nu'): #modifies ra (does not change throughout algorithm)
-                lines[i] = f'nu = {self.pm.nu}       ! kinematic viscosity\n'
             if line.startswith('outs'):
                 if vort: # to save additional vorticity fields
                     lines[i] = 'outs = 1   ! controls the amount of output\n'
@@ -138,7 +140,7 @@ class GHOST(Solver):
                     lines[i] = 'outs = 0   ! controls the amount of output\n'
 
         #write
-        with open('parameter.txt', 'w') as file:
+        with open(f'parameter.{suffix}', 'w') as file:
             file.writelines(lines)
 
 
