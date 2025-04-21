@@ -1,24 +1,27 @@
 # GHOST parameters (to be set as compiled solver) 
-L = 1.0 # Domain length in x (multiples of 2pi)
-Nx = 256 # Number of grid points in x
-Ny = 256 # Number of grid points in y
-Nz = 256 # Number of grid points in z
+Lx = 1.0 # Domain length in x (multiples of 2pi)
+Ly = 1.0 # Domain length in y (multiples of 2pi)
+Lz = 1.0 # Domain length in z (multiples of 2pi)
+Nx = 64 # Number of grid points in x
+Ny = 64 # Number of grid points in y
+Nz = 64 # Number of grid points in z
 precision = 'single' # Precision of the code
-ext = 5 # Number of digits in file names
+ext = 4 # Number of digits in file names
 rkord = 2 # Order of Runge-Kutta method
 
 # GHOST adjustable parameters
-dt = 1e-3 # Time step
+dt = 7.5e-4 # Time step
 bstep = 100 # Time step for saving text files
 ostep = 200 # Time step for saving output files
-nprocs = 15 # Number of processors dedicated to simulation
+nprocs = 14 # Number of processors dedicated to simulation
 
 # Newton-Krylov parameters 
+T = None # Initial guess for period. If None then equilibrium is searched for
 sx = 0. # Initial guess of shift in x. If None then Traveling Waves are not searched for  
 restart_iN = 0 # Last completed Newton iteration if restarting
 input = "input/" # Path to input files
-input_type = 'v' # Type of input files: 'v' for velocity, 'ps' for streamfunction 
-stat = 0 # Index of input files 
+stat = 19 # Index of input files 
+Tconst = 10. # If searching for Equilibrium (or TW) the fixed time to evolve per iteration
 
 remove_boundary = False  # Removes fixed non-periodic boundaries from fields for Newton Krylov calculations
 

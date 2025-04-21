@@ -11,8 +11,9 @@ from pySPEC.solvers import GHOST
 from pySPEC.methods import DynSys
 import params as pm
 
-pm.Lx = 2*np.pi*pm.L
-pm.Ly = 2*np.pi*pm.L
+pm.Lx = 2*np.pi*pm.Lx
+pm.Ly = 2*np.pi*pm.Ly
+pm.Lz = 2*np.pi*pm.Lz
 
 # Initialize solver
 grid = ps.Grid3D(pm)
@@ -21,6 +22,7 @@ newt = DynSys(pm, solver)
 
 # Load initial conditions
 if pm.restart_iN == 0:
+    # Load fields
     fields = solver.load_fields(pm.input, pm.stat)
     sx = pm.sx # Set initial guess for shift
     # Create directories

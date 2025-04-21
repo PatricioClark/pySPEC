@@ -1,22 +1,22 @@
 ! General configuration flags
 &status
-idir = "/ptmp/run"
-odir = "/ptmp/run"
-stat = 0         ! last binary file if restarting an old run
+idir = "." 
+odir = "." 
+stat = 1    ! last binary file if restarting an old run
 mult = 1         ! decreases the time step
 bench = 0        ! benchmark mode if 1
-outs = 0         ! controls the amount of output
+outs = 0   ! controls the amount of output
 mean = 0         ! computes mean fields if 1
 trans = 1        ! computes energy transfer if 1
 /
 
 ! Parameters for time integration
 &parameter
-dt = 7.5e-4      ! time step
-step = 12001     ! total number of steps
-tstep = 500      ! number of steps between binary output
-sstep = 250      ! number of steps between spectrum output
-cstep = 10       ! number of steps between writing global quantities
+dt = 0.00075   ! time step
+step = 13334      ! total number of steps
+tstep = 13333 !steps between saving fields
+sstep = 0 !number of steps between spectrum output
+cstep = 0 !steps between writing global quantities
 rand = 1         ! random phases if 1
 cort = 7.5e-4    ! correlation time of the external forcing
 seed = 1000      ! seed for the random number generator
@@ -122,7 +122,7 @@ kttherm = 2.e-4  ! K.Tthermalization (ARGL and RARGL solvers)
 V0 = 0.00        ! Amplitude of trapping potential (RARGL and RGPE solvers)
 cflow = 0        ! =1 if generating counterflow (ARGL and RARGL solver)
 cflow_newt = 0   ! =1 if mean flow is needed for Newton method (ARGL/RARGL)
-dt_newt = 1.00   ! time step (preconditioner) for Newton method (ARGL/RARGL)
+dt = 0.00075   ! time step
 iter_max_newt = 0   ! max number of iterations in Newton (ARGL, if 0 no Newton)
 iter_max_bicg = 200 ! max number of iterations for BicGStab (ARGL/RARGL)
 tol_newt = 1.e-6    ! tolerance for the Newton method (ARGL/RARGL)
