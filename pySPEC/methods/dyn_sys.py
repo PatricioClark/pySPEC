@@ -37,9 +37,9 @@ class DynSys():
     def form_X(self, U, T=None, sx=None, lda = None):
         ''' Form X vector from fields U, T, sx and lda (if applicable) '''
         X = np.copy(U)
-        if getattr(self.pm, 'T', None) is not None:
+        if self.pm.T is not None:
             X = np.append(X, T)
-        if getattr(self.pm, 'sx', None) is not None:
+        if self.pm.sx is not None:
             X = np.append(X, sx)
         if lda is not None:
             X = np.append(X, lda)
@@ -47,24 +47,23 @@ class DynSys():
 
     def unpack_X(self, X, arclength = False):
         '''X could contain extra params sx and lda if searching for RPOs (pm.sx != 0) or using arclength continuation'''
-        dim_U = self.grid.N * self.solver.num_fields
         
-        # Remove boundaries if needed
-        remove_boundary = getattr(self.pm, 'remove_boundary', False)
-        if remove_boundary:
+        # Determine size of U
+        if getattr(self.pm, 'remove_boundary', False):
             dim_U = self.pm.Nx * (self.pm.Nz-2) * self.solver.num_fields
+        else:
+            dim_U = self.grid.N * self.solver.num_fields
 
         U = X[:dim_U]
+        idx = dim_U
 
-        if getattr(self.pm,'T',None) is not None:
-            T = X[dim_U] # T saved as first argument after U
+        if self.pm.T is not None:
+            T = X[idx] # T saved as first argument after U
+            idx += 1
         else:
-            T = 1. # if searching for TW or equilibrium T must be fixed at a small but not too small value 
+            T = self.pm.Tconst # if searching for TW or equilibrium T must be fixed at a small but not too small value 
 
-        if getattr(self.pm,'sx',None) is not None:
-            sx = X[dim_U+1] if self.pm.T else X[dim_U]
-        else:
-            sx = 0.
+        sx = X[idx] if (self.pm.sx is not None) else 0.
 
         if not arclength:
             return U, T, sx
@@ -88,7 +87,7 @@ class DynSys():
 
     def flatten(self, fields):
         '''Flattens fields'''
-        remove_boundary = getattr(self.pm, 'remove_boundary', False)
+        remove_boundary = self.pm.remove_boundary if hasattr(self.pm, 'remove_boundary') else False
         if not remove_boundary:
             return np.concatenate([f.flatten() for f in fields])
         else:
@@ -98,7 +97,7 @@ class DynSys():
         '''Unflatten fields'''
         ll = len(U)//self.solver.num_fields
         fields = [U[i*ll:(i+1)*ll] for i in range(self.solver.num_fields)]
-        remove_boundary = getattr(self.pm, 'remove_boundary', False)
+        remove_boundary = self.pm.remove_boundary if hasattr(self.pm, 'remove_boundary') else False
         if not remove_boundary:
             fields = [f.reshape(self.grid.shape) for f in fields]
             return fields
@@ -133,9 +132,9 @@ class DynSys():
         return self.grid.translate(U, sx)
 
     @flatten_dec
-    def deriv_U(self, U):
+    def deriv_U(self, U, ki):
         '''Derivatives in x direction of fields'''
-        return self.grid.deriv_fields(U)
+        return self.grid.deriv_fields(U, ki)
 
     @flatten_dec
     def sol_project(self, U):
@@ -183,8 +182,8 @@ class DynSys():
         if self.pm.sx is not None:
             UT = self.translate(UT, sx)
 
-            dUT_ds = self.deriv_U(UT)
-            dU_ds = self.deriv_U(U)
+            dUT_ds = self.deriv_U(UT, self.grid.kx)
+            dU_ds = self.deriv_U(U, self.grid.kx)
         else:
             dUT_ds = dU_ds = np.zeros_like(U) # No translation if sx is None
 
@@ -321,7 +320,7 @@ class DynSys():
             if self.pm.T:
                 T_new = T+dT.real
             else:
-                T_new = 1.
+                T_new = self.pm.Tconst
 
             X_new = self.form_X(U_new, T_new, sx_new)
 
@@ -708,8 +707,8 @@ class DynSys():
         if self.pm.sx is not None:
             UT = self.translate(UT, sx)
 
-            dUT_ds = self.deriv_U(UT)
-            dU_ds = self.deriv_U(U)
+            dUT_ds = self.deriv_U(UT, self.grid.kx)
+            dU_ds = self.deriv_U(U, self.grid.kx)
         else:
             dUT_ds = dU_ds = np.zeros_like(U) # No translation if sx is None
 

@@ -45,10 +45,10 @@ class Grid1D:
         return 1.0j*ki*ui
 
     def avg(self, ui):
-        ''' Mean in Fourier space. rfft is used, so middle modes must be doubled to account '''
-        ''' for negative frequencies. If n is even the last mode contains +fs/2 and -fs/2'''
-        tmp = 1 if len(ui) % 2 == 0 else 2
-        sum_ui = ui[0] + 2.0*np.sum(ui[1:-1]) + tmp* ui[-1]
+        ''' Mean in Fourier space. rfftn is used, so in last dimension middle modes must be 
+        doubled to account for negative frequencies. If n is even the last mode contains +fs/2 and -fs/2'''
+        tmp = 1 if ui.shape[-1] % 2 == 0 else 2
+        sum_ui = np.sum(ui[...,0]) + 2.0*np.sum(ui[...,1:-1]) + tmp* np.sum(ui[...,-1])
         return self.norm * sum_ui
 
     @staticmethod
@@ -78,10 +78,10 @@ class Grid1D:
         fields = [self.inverse(ff) for ff in f]
         return fields
 
-    def deriv_fields(self, fields):
-        ''' Compute derivatives in Fourier space '''
+    def deriv_fields(self, fields, ki):
+        ''' Compute derivatives in Fourier space in i direction '''
         f = [self.forward(ff) for ff in fields]
-        f = [self.deriv(ff, self.kx) for ff in f]
+        f = [self.deriv(ff, ki) for ff in f]
         return [self.inverse(ff) for ff in f]
 
 
@@ -145,13 +145,6 @@ class Grid2D(Grid1D):
         fv = fields[1]
         return self.pxx*fu + self.pxy*fv, self.pxy*fu + self.pyy*fv
 
-    def avg(self, ui):
-        ''' Mean in Fourier space. rfft is used, so middle modes must be doubled to account
-            for negative frequencies. If n is even the last mode contains +fs/2 and -fs/2'''
-        tmp = 1 if ui.shape[-1] % 2 == 0 else 2
-        sum_ui = np.sum(ui[:,0]) + 2.0*np.sum(ui[:,1:-1]) + tmp* np.sum(ui[:,-1])
-        return self.norm * sum_ui
-
 
 class Grid2D_semi(Grid1D):
     ''' 2D grid periodic only in the horizontal direction. To be used with the SPECTER wrapper '''
@@ -191,15 +184,15 @@ class Grid3D(Grid1D):
 
         kx = 2.0*np.pi*np.fft.fftfreq(pm.Nx, dx) 
         ky = 2.0*np.pi*np.fft.fftfreq(pm.Ny, dy)
-        kz = 2.0*np.pi*np.fft.fftfreq(pm.Nz, dz)
+        kz = 2.0*np.pi*np.fft.rfftfreq(pm.Nz, dz)
         kx, ky, kz = np.meshgrid(kx, ky, kz, indexing='ij')
         k2 = kx**2 + ky**2 + kz**2
         kk = np.sqrt(k2)
 
         ki = np.fft.fftfreq(pm.Nx, 1/pm.Nx)
-        kj = np.fft.rfftfreq(pm.Ny, 1/pm.Ny)
-        kz = np.fft.rfftfreq(pm.Nz, 1/pm.Nz)
-        ki, kj, kz = np.meshgrid(ki, kj, kz, indexing='ij')
+        kj = np.fft.fftfreq(pm.Ny, 1/pm.Ny)
+        kl = np.fft.rfftfreq(pm.Nz, 1/pm.Nz)
+        ki, kj, kl = np.meshgrid(ki, kj, kl, indexing='ij')
         kr = (ki/pm.Nx)**2 + (kj/pm.Ny)**2 + (kz/pm.Nz)**2
 
         self.xx = xx
@@ -224,13 +217,13 @@ class Grid3D(Grid1D):
         self.zero_mode = (0, 0, 0)
         self.dealias_modes = (self.kr > 1/9)
 
-        with np.errstate(divide='ignore', invalid='ignore'):
-            self.pxx = np.nan_to_num(1.0 - self.kx**2/k2)
-            self.pyy = np.nan_to_num(1.0 - self.ky**2/k2)
-            self.pzz = np.nan_to_num(1.0 - self.kz**2/k2)
-            #TODO: check if this is correct
-            self.pxy = np.nan_to_num(- self.kx*self.ky/k2)
-            self.pxyz = np.nan_to_num(self.kx*self.ky*self.kz/k2)
+        # with np.errstate(divide='ignore', invalid='ignore'):
+        #     self.pxx = np.nan_to_num(1.0 - self.kx**2/k2)
+        #     self.pyy = np.nan_to_num(1.0 - self.ky**2/k2)
+        #     self.pzz = np.nan_to_num(1.0 - self.kz**2/k2)
+        #     #TODO: check if this is correct
+        #     self.pxy = np.nan_to_num(- self.kx*self.ky/k2)
+        #     self.pxyz = np.nan_to_num(self.kx*self.ky*self.kz/k2)
 
     def translate3D(self, fields, sx=0., sy=0., sz=0.):
         # Forward transform
@@ -247,10 +240,3 @@ class Grid3D(Grid1D):
     #     fu = fields[0]
     #     fv = fields[1]
     #     return self.pxx*fu + self.pxy*fv, self.pxy*fu + self.pyy*fv
-
-    def avg(self, ui):
-        ''' Mean in Fourier space. rfft is used, so middle modes must be doubled to account
-            for negative frequencies. If n is even the last mode contains +fs/2 and -fs/2'''
-        tmp = 1 if ui.shape[-1] % 2 == 0 else 2
-        sum_ui = np.sum(ui[:,:,0]) + 2.0*np.sum(ui[:,:,1:-1]) + tmp* np.sum(ui[:,:,-1])
-        return self.norm * sum_ui
