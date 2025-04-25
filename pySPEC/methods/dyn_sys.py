@@ -407,7 +407,7 @@ class DynSys():
         prints_dir = dirs[-1]
         dirs.extend ([prints_dir+dir_ for dir_ in ('/error_gmres', '/hookstep', '/apply_A')])
 
-        if self.solver.solver == 'BOUSS':
+        if self.solver.solver == 'BOUSS' or self.solver.solver == 'ROTH':
             dirs.append('bin_tmp')
 
         for dir_ in dirs:
