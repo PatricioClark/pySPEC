@@ -534,7 +534,7 @@ class DynSys():
              DeprecationWarning)
         return self.floquet_exponents(fields, T, n, tol, ep0, sx, b)
 
-    def floquet_exponents(self, fields, T, n, tol, ep0=1e-7, sx=None, b='U'):
+    def floquet_exponents(self, fields, T, n, tol, ep0=1e-7, sx=None, b='U', test=False):
         ''' Calculates Floquet exponents
 
         To get the Lyapunov exponents do log(eigval_H)/T
@@ -592,6 +592,19 @@ class DynSys():
             raise ValueError('b must be one of the given options')
 
         eigval_H, eigvec_H, Q = arnoldi_eig(apply_J, b, n, tol)
+
+        if test:
+            # Checks if returned eigenvectors satisfy Av=lambda v
+            magnitudes = []
+            cos_angles = []
+            for i in range(n):
+                ev = Q @ eigvec_H[:,i]
+                Aev = apply_J(ev.real)
+                magnitude = np.linalg.norm(Aev)
+                magnitudes.append(magnitude)
+                cos_angles.append(np.dot(Aev, ev)/magnitude ) # ev is already normalized
+            
+            return eigval_H, eigvec_H, Q, np.array(magnitudes), np.array(cos_angles)
 
         return eigval_H, eigvec_H, Q
 
