@@ -47,7 +47,7 @@ class DynSys():
 
     def unpack_X(self, X, arclength = False):
         '''X could contain extra params sx and lda if searching for RPOs (pm.sx != 0) or using arclength continuation'''
-        
+
         # Determine size of U
         if getattr(self.pm, 'remove_boundary', False):
             dim_U = self.pm.Nx * (self.pm.Nz-2) * self.solver.num_fields
@@ -61,7 +61,7 @@ class DynSys():
             T = X[idx] # T saved as first argument after U
             idx += 1
         else:
-            T = self.pm.Tconst # if searching for TW or equilibrium T must be fixed at a small but not too small value 
+            T = self.pm.Tconst # if searching for TW or equilibrium T must be fixed at a small but not too small value
 
         sx = X[idx] if (self.pm.sx is not None) else 0.
 
@@ -82,7 +82,7 @@ class DynSys():
 
         if arclength:
             lda = np.loadtxt(fname, delimiter = ',', skiprows = 1, unpack = True, usecols = 5)
-            values.append(lda[idx_restart])        
+            values.append(lda[idx_restart])
         return values
 
     def flatten(self, fields):
@@ -229,7 +229,7 @@ class DynSys():
                 LHS = np.append(LHS, t_proj)
             if self.pm.sx is not None:
                 LHS = np.append(LHS, Tx_proj)
-                
+
             return LHS
 
         return apply_A, UT
@@ -298,7 +298,7 @@ class DynSys():
             trust_region = self.trust_region_function(H, beta, iN, y)
         else:
             trust_region = self.trust_region_function(H, beta, iN, y, arclength["iA"])
-            
+
         mu = 0.
         #Perform hookstep
         for iH in range(self.pm.N_hook):
@@ -339,7 +339,7 @@ class DynSys():
                 N = self.N_constraint(X_new, arclength["dX_dr"], arclength["dr"], arclength["X1"])
                 b = np.append(b, -N)
 
-            F_new = self.norm(b) 
+            F_new = self.norm(b)
             lin_exp = self.norm(beta - self.pm.c * H @ y) #linear expansion of F around x (in basis Q).
             # beta = H@y holds
 
@@ -395,7 +395,7 @@ class DynSys():
         os.makedirs(path, exist_ok=True)
 
     def mkdirs(self, iA:int | None = None):
-        ''' Make directories for solver 
+        ''' Make directories for solver
         if iA is given then outputs are saved in a specific arclength iteration'''
 
         # Convert iA to a string prefix if it's provided
@@ -486,6 +486,34 @@ class DynSys():
         with open(f'prints{suffix}/hookstep/iN{iN:02}.txt', 'a') as file:
             file.write(f'{iH:02},{F_new:.4e},{lin_exp:.4e}\n')
 
+    def phase_shifted_b(self, fields):
+        """Generate b vector by modifying phases in Fourier space."""
+        def apply_phase_shift(U):
+            """Applies a random phase shift to a single field U and projects to solenoidal modes."""
+            U_hat = self.grid.forward(U)
+            random_phases = np.exp(1j * np.random.uniform(0, 2*np.pi, U_hat.shape))
+            U_hat_shifted = np.abs(U_hat) * random_phases  # Preserve magnitudes
+            return U_hat_shifted
+
+        # Separate into u and v components
+        u, v = fields
+        b_vector = []
+
+        u_hat_shifted = apply_phase_shift(u)
+        v_hat_shifted = apply_phase_shift(v)
+
+        # Project in Fourier space
+        u_proj_hat, v_proj_hat = self.grid.inc_proj((u_hat_shifted, v_hat_shifted))
+
+        # Inverse FFT to physical space
+        u_proj = self.grid.inverse(u_proj_hat)
+        v_proj = self.grid.inverse(v_proj_hat)
+        fields_proj = [u_proj, v_proj]
+
+        b_vector = self.flatten([f.flatten() for f in fields_proj])
+        return b_vector
+
+
     def floq_exp(self, X, n, tol, b = 'U'):
         ''' Calculates Floquet exponents of periodic orbit '''
         ''' X: (U,T,sx) of converged periodic orbit, n: number of exponents, tol: tolerance of Arnoldi '''
@@ -538,7 +566,7 @@ class DynSys():
         ''' Calculates Floquet exponents
 
         To get the Lyapunov exponents do log(eigval_H)/T
-        
+
         Paramters
         ---------
         fields: list of fields.
@@ -586,6 +614,8 @@ class DynSys():
                 b = U
             elif b == 'random':
                 b = np.random.randn(len(U))
+            elif b == 'phases':
+                b = self.phase_shifted_b(fields)
         elif isinstance(b, np.ndarray):
             pass
         else:
@@ -608,10 +638,10 @@ class DynSys():
 
     def run_arclength(self, X0, X1, X_restart = None, iA:int|None = None):
         '''Iterates Newton-GMRes solver until convergence using arclength continuation
-        Follows convention of Chandler - Kerswell: Invariant recurrent solutions.. 
+        Follows convention of Chandler - Kerswell: Invariant recurrent solutions..
         X: Vector containing (U, T, sx, lda) to be updated with Newton until it converges to periodic orbit
-        dX_dr: Derivative of X w.r.t. arclength 
-        X1: Previous converged solution (X(r0) in Chandler-Kerswell 
+        dX_dr: Derivative of X w.r.t. arclength
+        X1: Previous converged solution (X(r0) in Chandler-Kerswell
         iA: arclength iteration in case automatic arclength is performed '''
 
         # Define relevant quantities for arclength continuation
@@ -689,7 +719,7 @@ class DynSys():
         if self.solver.solver == 'KolmogorovFlow':
             Re = lda # Reynolds number
             self.pm.nu = 1 / Re
-        elif self.solver.solver == 'BOUSS': 
+        elif self.solver.solver == 'BOUSS':
             Ra = lda # Rayleigh number
             Ra *= self.pm.norm # to account for possible normalization
             self.pm.ra = Ra
@@ -697,7 +727,7 @@ class DynSys():
             raise Exception('Arclength only implemented for Kolmogorov and BOUSS')
 
     def N_constraint(self, X, dX_dr, dr, X1):
-        '''Calculates N function resulting from the arclength constraint as in 
+        '''Calculates N function resulting from the arclength constraint as in
         'Chandler - Kerswell: Invariant recurrent solutions..' '''
         alpha = getattr(self.pm, 'alpha', 1.) # parametrization velocity. default = 1.
         return np.dot(dX_dr, (X-X1)) - dr * alpha**2
@@ -785,7 +815,7 @@ class DynSys():
 
     def run_arc_auto(self, X0, X1, X_restart = None):
         '''Iterates Newton-GMRes solver until convergence using arclength continuation
-        Once a solution has converged it automatically uses the new converged solution as 
+        Once a solution has converged it automatically uses the new converged solution as
         the new starting point
         '''
         start_iA = max(2, self.pm.restart_iA)
