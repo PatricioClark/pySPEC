@@ -145,17 +145,18 @@ def arnoldi_eig(A, b, n, tol):
     dtype = b.dtype
 
     #Unitary base of Krylov subspace (maximum number of cols: n)
-    Q = np.zeros((len(b), n), dtype=dtype)
+    Q = np.zeros((len(b), n+1), dtype=dtype)
     Q[:,0] = b/np.linalg.norm(b) #Normalize the input vector
 
     #Hessenberg matrix
     H = np.zeros((n+1,n), dtype=dtype)
 
     #In each iteration a new column of Q and H is computed.
-    for k in range(1,n):
+    for k in range(1,n+1):
         Q[:,k], H[:k+1,k-1] = arnoldi_step(A, Q, k) #Perform Arnoldi iteration to add column to Q (m entries) and to H (k entries)  
 
         if H[k,k-1] < tol:
+
             break
 
     #Get H eigenvalues and eigvec

@@ -595,16 +595,14 @@ class DynSys():
 
         if test:
             # Checks if returned eigenvectors satisfy Av=lambda v
-            magnitudes = []
-            cos_angles = []
+            Aev_r = np.zeros((len(U), n))
+            Aev_i = np.zeros((len(U), n))
             for i in range(n):
                 ev = Q @ eigvec_H[:,i]
-                Aev = apply_J(ev.real)
-                magnitude = np.linalg.norm(Aev)
-                magnitudes.append(magnitude)
-                cos_angles.append(np.dot(Aev, ev)/magnitude ) # ev is already normalized
-            
-            return eigval_H, eigvec_H, Q, np.array(magnitudes), np.array(cos_angles)
+                Aev_r[:,i] = apply_J(ev.real)
+                Aev_i[:,i] = apply_J(ev.imag)
+
+            return eigval_H, eigvec_H, Q, Aev_r, Aev_i
 
         return eigval_H, eigvec_H, Q
 
