@@ -141,11 +141,6 @@ class SWHD_1D(PseudoSpectral):
         hh = self.grid.inverse(fields[1])
         self.hhs = self.save_to_ram(self.hhs, hh, int(step/self.pm.ostep), int(self.total_steps/self.pm.ostep), dtype=np.float64)
         if self.make_data and (step == self.total_steps-1):
-            if self.noise:
-                self.uus_noise = self.add_noise(self.uus, std=self.uum_noise_std)
-                self.hhs_noise = self.add_noise(self.hhs, std=self.hhm_noise_std)
-                np.save(f'{self.pm.out_path}/uums_noise', self.uus_noise)
-                np.save(f'{self.pm.out_path}/hhms_noise', self.hhs_noise)
 
             np.save(f'{self.pm.out_path}/uums', self.uus)
             np.save(f'{self.pm.out_path}/hhms', self.hhs)

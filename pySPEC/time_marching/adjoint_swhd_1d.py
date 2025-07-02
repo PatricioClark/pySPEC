@@ -26,6 +26,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.swhd = swhd_instance
         self.grid = ps.Grid1D(pm)
         self.inverse_u = pm.inverse_u
+        self.inverse_u0 = pm.inverse_u0
         self.noise = pm.noise
         self.uum_noise_std = pm.uum_noise_std
         self.hhm_noise_std = pm.hhm_noise_std
@@ -54,6 +55,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.forced_hhs = None
         self.u_loss = None
         self.h_loss = None
+        self.u0_loss = None
         self.val = None
         self.uus_ = None
         self.hhs_ = None
@@ -74,6 +76,9 @@ class Adjoint_SWHD_1D(PseudoSpectral):
             self.hhms_ = self.hhms # to keep pure measurements
             self.uums = self.add_noise(self.uums, std=self.uum_noise_std)
             self.hhms = self.add_noise(self.hhms, std=self.hhm_noise_std)
+            breakpoint()
+            np.save(f'{self.hb_path}/uums_noise', self.uums)
+            np.save(f'{self.hb_path}/hhms_noise', self.hhms)
 
     def sparsify_mms(self, field, st = 1, sx = 1, N = 1024):
             '''Returns sparse signal, number of sparse measurements and Nyquist frequency'''
@@ -125,9 +130,13 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         else:
             u_loss = np.sum((self.uums - self.uus)**2)
             h_loss = np.sum((self.hhms - self.hhs)**2)
+        if self.inverse_u0:
+            u0_loss = np.sum((self.uums[0] - self.uus[0])**2)
+            self.u0_loss = self.save_to_ram(self.u0_loss, u0_loss, iit, self.iitN, dtype=np.float64)
 
         self.u_loss = self.save_to_ram(self.u_loss, u_loss, iit, self.iitN, dtype=np.float64)
         self.h_loss = self.save_to_ram(self.h_loss, h_loss, iit, self.iitN, dtype=np.float64)
+
 
     def update_val(self, iit):
         val = np.sum((self.true_hb - self.hb)**2)
