@@ -9,12 +9,12 @@ bstep = 100 # Time step for saving text files
 ostep = 200 # Time step for saving output files
 ext = 7 # Number of digits in file names
 
-# Newton-Solver parameters 
+# Newton-Solver parameters
 T = 5.8 # Initial guess of UPO period
-sx = 0. # Initial guess of UPO shift in x. If None then RPOs are not searched for  
-restart = 0 # Last completed Newton iteration if restarting
+sx = 0. # Initial guess of UPO shift in x. If None then RPOs are not searched for
+restart_iN = 0 # Last completed Newton iteration if restarting
 input = "input/" # Path to input files
-stat = 0 # Index of input files 
+start_idx = 0 # Index of input files
 
 N_newt = 200 # Maximum number of Newton iterations
 N_gmres = 300 # Maximum number of GMRES iterations

@@ -21,14 +21,14 @@ solver = KolmogorovFlow(pm)
 newt = DynSys(pm, solver)
 
 # Load initial conditions
-if pm.restart != 0:
-    # Restart Newton Solver from last iteration at index 0 (start of evolution)
-    restart_path = f'output/iN{pm.restart:02}/'
-    fields = solver.load_fields(restart_path, 0)
-    T, sx = newt.get_restart_values(pm.restart) # Get period and shift from last Newton iteration
+if pm.restart_iN != 0:
+    # restart_iN Newton Solver from last iteration at index 0 (start of evolution)
+    restart_iN_path = f'output/iN{pm.restart_iN:02}/'
+    fields = solver.load_fields(restart_iN_path, 0)
+    T, sx = newt.get_restart_iN_values(pm.restart_iN) # Get period and shift from last Newton iteration
 else:
     # Start Newton Solver from initial guess
-    fields = solver.load_fields(pm.input, pm.start_idx)    
+    fields = solver.load_fields(pm.input, pm.start_idx)
     T, sx = pm.T, pm.sx # Set initial guess for period and shift
     # Create directories
     newt.mkdirs()
