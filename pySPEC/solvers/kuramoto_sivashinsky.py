@@ -14,6 +14,10 @@ class KuramotoSivashinsky(PseudoSpectral):
         super().__init__(pm)
         self.grid = ps.Grid1D(pm)
 
+        # Define hyperviscosity if not provided
+        if not hasattr(self.pm, 'nu'):
+            self.pm.nu = 1.0
+
     def rkstep(self, fields, prev, oo, dt):
         # Unpack
         fu  = fields[0]
@@ -26,7 +30,7 @@ class KuramotoSivashinsky(PseudoSpectral):
         fu = fup + (dt/oo) * (
             - (0.5*1.0j*self.grid.kx*fu2)
             + ((self.grid.k2)*fu)
-            - ((self.grid.k2**2)*fu)
+            - (self.pm.nu*(self.grid.k2**2)*fu)
             )
 
         # de-aliasing
