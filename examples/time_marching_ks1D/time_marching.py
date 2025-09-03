@@ -35,7 +35,7 @@ plt.savefig('balance.png')
 # Plot fields
 acc = []
 for ii in range(0,int(pm.T/pm.dt), pm.ostep):
-    out = np.load(f'uu_{ii:04}.npy')
+    out = np.load(f'uu.{ii:04}.npy')
     acc.append(out)
 
 acc = np.array(acc)
