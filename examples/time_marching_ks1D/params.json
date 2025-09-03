@@ -7,5 +7,6 @@
     "rkord": 2,
     "bstep": 10,
     "ostep": 1000,
+	"ext":6,
     "stat": 0
 }
