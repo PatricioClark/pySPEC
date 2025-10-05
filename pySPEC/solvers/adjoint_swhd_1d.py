@@ -27,6 +27,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.grid = ps.Grid1D(pm)
         self.inverse_u = pm.inverse_u
         self.inverse_u0 = pm.inverse_u0
+        self.inverse_h0 = pm.inverse_h0
         self.noise = pm.noise
         self.uum_noise_std = pm.uum_noise_std
         self.hhm_noise_std = pm.hhm_noise_std
@@ -34,7 +35,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.iitN = pm.iitN
         self.ckpt = pm.ckpt
         self.Nt = round(pm.T/pm.dt)
-        self.total_steps =  round(self.pm.T/self.pm.dt)
+        self.total_steps =  int(self.pm.T/self.pm.dt) + 1 # total time steps, since RK runs for Nt+1 steps
+        self.step = 0 # current step for adjoint solver
         self.data_path = pm.data_path
         self.field_path = pm.field_path
         self.hb_path = pm.hb_path
@@ -42,6 +44,10 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.hbs = None
         self.dg = None
         self.dgs = None
+        self.du0 =  None
+        self.du0s =  None
+        self.dh0 =  None
+        self.dh0s =  None
         self.true_hb = None
         self.hx_uu = None
         self.h_ux = None
@@ -49,6 +55,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.hhs = None
         self.uums = None
         self.hhms = None
+        self.uums_sparse = None
+        self.hhms_sparse = None
         self.uums_ = None # not none if noise is added to measurements
         self.hhms_ = None # not none if noise is added to measurements
         self.forced_uus = None
@@ -56,9 +64,18 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.u_loss = None
         self.h_loss = None
         self.u0_loss = None
+        self.h0_loss = None
         self.val = None
         self.uus_ = None
+        self.uu0_ = None
         self.hhs_ = None
+        self.hh0_ = None
+        self.uu0s = None
+        self.uu0 = None
+        self.hh0s = None
+        self.hh0 = None
+        self.true_uu0 = None
+        self.true_hh0 = None
         self.st = pm.st
         self.sx = pm.sx
         self.Ns = None
@@ -71,12 +88,19 @@ class Adjoint_SWHD_1D(PseudoSpectral):
     def get_measurements(self):
         self.uums = np.load(f'{self.data_path}/uums.npy')[:self.total_steps, :] # all uu fields in time
         self.hhms = np.load(f'{self.data_path}/hhms.npy')[:self.total_steps, :] # all hh fields in time
+        # sparsify measurements
+        self.uums_sparse, Ns, kN = self.sparsify_mms(self.uums, st = self.st, sx = self.sx)
+        self.hhms_sparse, Ns, kN = self.sparsify_mms(self.hhms, st = self.st, sx = self.sx)
+
         if self.noise:
             self.uums_ = self.uums # to keep pure measurements
             self.hhms_ = self.hhms # to keep pure measurements
+            # add noise to measurements
             self.uums = self.add_noise(self.uums, std=self.uum_noise_std)
             self.hhms = self.add_noise(self.hhms, std=self.hhm_noise_std)
-            breakpoint()
+            # sparsify measurements
+            self.uums_sparse, Ns, kN = self.sparsify_mms(self.uums, st = self.st, sx = self.sx)
+            self.hhms_sparse, Ns, kN = self.sparsify_mms(self.hhms, st = self.st, sx = self.sx)
             np.save(f'{self.hb_path}/uums_noise', self.uums)
             np.save(f'{self.hb_path}/hhms_noise', self.hhms)
 
@@ -134,6 +158,9 @@ class Adjoint_SWHD_1D(PseudoSpectral):
             u0_loss = np.sum((self.uums[0] - self.uus[0])**2)
             self.u0_loss = self.save_to_ram(self.u0_loss, u0_loss, iit, self.iitN, dtype=np.float64)
 
+        if self.inverse_h0:
+            h0_loss = np.sum((self.hhms[0] - self.hhs[0])**2)
+            self.h0_loss = self.save_to_ram(self.h0_loss, h0_loss, iit, self.iitN, dtype=np.float64)
         self.u_loss = self.save_to_ram(self.u_loss, u_loss, iit, self.iitN, dtype=np.float64)
         self.h_loss = self.save_to_ram(self.h_loss, h_loss, iit, self.iitN, dtype=np.float64)
 
@@ -149,11 +176,42 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         self.hbs = self.save_to_ram(self.hbs, self.hb, iit, self.iitN, dtype=np.float64)
 
 
+    def update_uu0(self, uu0):
+        self.uu0 = uu0
+
+    def update_true_uu0(self, true_uu0):
+        self.true_uu0 = true_uu0
+
+    def update_uu0s(self, iit):
+        self.uu0s = self.save_to_ram(self.uu0s, self.uu0, iit, self.iitN, dtype=np.float64) # save to uu0 history
+
+    def update_hh0(self, hh0):
+        self.hh0 = hh0
+
+    def update_true_hh0(self, true_hh0):
+        self.true_hh0 = true_hh0
+
+    def update_hh0s(self, iit):
+        self.hh0s = self.save_to_ram(self.hh0s, self.hh0, iit, self.iitN, dtype=np.float64) # save to hh0 history
+
     def update_dg(self, dg):
         self.dg = dg
 
     def update_dgs(self, iit):
         self.dgs = self.save_to_ram(self.dgs, self.dg, iit, self.iitN, dtype=np.float64)
+
+    def update_du0(self, du0):
+        self.du0 = du0
+
+    def update_du0s(self, iit):
+        self.du0s = self.save_to_ram(self.du0s, self.du0, iit, self.iitN, dtype=np.float64)
+
+    def update_dh0(self, dh0):
+        self.dh0 = dh0
+
+    def update_dh0s(self, iit):
+        self.dh0s = self.save_to_ram(self.dh0s, self.dh0, iit, self.iitN, dtype=np.float64)
+
 
     def sparsify(self, signal, s=1, N=1024):
         '''Masks signal to make sparse measurements every s points.
@@ -175,14 +233,12 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         fh_p = prev[1]
 
         # Access the step from the evolve method via the class attribute
-        step = self.current_step
-
+        step = self.step
         # get physical fields and measurements from T to t0, back stepping in time
         Nt = self.Nt
         back_step = Nt-1 - step
         uu = self.uus[back_step]
         hh = self.hhs[back_step]
-
         # get hb
         hb = self.hb
         # forcing terms
@@ -240,8 +296,7 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         # de-aliasing GD step
         fdg_[self.grid.dealias_modes] = 0.0
         dg_ = self.grid.inverse(fdg_)
-        self.hx_uu = self.save_to_ram(self.hx_uu, dg_, step, self.total_steps, dtype=np.float64)
-
+        self.hx_uu = self.save_to_ram(self.hx_uu, dg_, step, self.total_steps-1, dtype=np.float64) # starts saving at step 1, not 0
         return [fu_,fh_]
 
 
@@ -297,6 +352,8 @@ class Adjoint_SWHD_1D(PseudoSpectral):
         del fp  # Force the file to flush and close
 
     def outs(self, fields, step, opath):
+        # save current step for adjoint solver
+        self.step = step
         uu_ = self.grid.inverse(fields[0])
         self.uus_ = self.save_to_ram(self.uus_, uu_, int(step/self.pm.ostep), int(self.total_steps/self.pm.ostep), dtype=np.float64)
 

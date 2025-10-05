@@ -28,7 +28,8 @@ class SWHD_1D(PseudoSpectral):
         self.iit0 = pm.iit0
         self.iitN = pm.iitN
         self.total_iterations = self.iitN - self.iit0 - 1
-        self.total_steps =  round(self.pm.T/self.pm.dt) # total time steps
+        self.total_steps =  int(self.pm.T/self.pm.dt)+1 # total time steps, since RK runs for Nt+1 steps
+        self.step = 0 # current step for adjoint solver
         self.data_path = pm.data_path
         self.hb_path = pm.hb_path
         self.uus = None
