@@ -16,7 +16,7 @@ class PseudoSpectral(Solver, abc.ABC):
     def __init__(self, pm):
         super().__init__(pm)
 
-    def evolve(self, fields, T, bstep=None, ostep=None, sstep=None, bpath = '', opath = '', spath = ''):
+    def evolve(self, fields, T, bstep=None, ostep=None, sstep=None, bpath = '', opath = '', spath = '', write_outputs=True):
         ''' Evolves velocity fields to time T '''
 
         # Forward transform
@@ -28,7 +28,8 @@ class PseudoSpectral(Solver, abc.ABC):
             prev = np.copy(fields)
 
             # Write outputs
-            self.write_outputs(fields, step, bstep, ostep, sstep, bpath, opath, spath)
+            if write_outputs:
+                self.write_outputs(fields, step, bstep, ostep, sstep, bpath, opath, spath)
 
             dt = self.grid.dt
             #Make exact last step
@@ -42,7 +43,8 @@ class PseudoSpectral(Solver, abc.ABC):
                 fields = self.rkstep(fields, prev, oo, dt)
 
         # Write final outputs
-        self.write_outputs(fields, Nt, bstep, ostep, sstep, bpath, opath, spath, final=True)
+        if write_outputs:
+            self.write_outputs(fields, Nt, bstep, ostep, sstep, bpath, opath, spath, final=True)
 
         # Inverse transform
         fields = [self.grid.inverse(ff) for ff in fields]
